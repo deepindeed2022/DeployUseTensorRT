@@ -22,3 +22,8 @@ deps
 ## Why
 
 - [NVIDIA blog: Production Deep Learning with NVIDIA GPU Inference Engine](https://devblogs.nvidia.com/production-deep-learning-nvidia-gpu-inference-engine/)
+
+
+## SCHEDULE
+
+- plugin

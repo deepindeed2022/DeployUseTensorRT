@@ -1,11 +1,22 @@
-//!
+﻿//!
 //! sampleGoogleNet.cpp
 //! This file contains the implementation of the GoogleNet sample. It creates the network using
 //! the GoogleNet caffe model.
 //! It can be run with the following command line:
 //! Command: ./sample_googlenet [-h or --help] [-d=/path/to/data/dir or --datadir=/path/to/data/dir]
 //!
-
+/** GoogleNet include layer type：
+    Convolution
+    Dropout
+    ReLU
+    LRN
+    Pooling
+    InnerProduct
+    Softmax
+    Input
+    Concat
+all the layer have supported in TensorRT libs
+**/
 #include "argsParser.h"
 #include "buffers.h"
 #include "logger.h"
