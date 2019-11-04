@@ -17,6 +17,7 @@
 #include "argsParser.h"
 
 const std::string gSampleName = "TensorRT.sample_fasterRCNN";
+SimpleProfiler gProfiler("FasterRCNN-Profiler.log");
 
 static samplesCommon::Args gArgs;
 using namespace nvinfer1;
@@ -279,6 +280,7 @@ void printHelp(const char* name)
 
 int main(int argc, char** argv)
 {
+    setReportableSeverity(Severity::kINFO);
     bool argsOK = samplesCommon::parseArgs(gArgs, argc, argv);
     if (gArgs.help || !argsOK)
     {
@@ -341,7 +343,7 @@ int main(int argc, char** argv)
     trtModelStream->destroy();
     IExecutionContext* context = engine->createExecutionContext();
     assert(context != nullptr);
-
+    context->setProfiler(&gProfiler);
     std::vector<float> rois;
     std::vector<float> bboxPreds;
     std::vector<float> clsProbs;
@@ -420,6 +422,7 @@ int main(int argc, char** argv)
     }
 
     delete[] data;
+    gLogInfo << gProfiler << std::endl;
 
     return gLogger.reportTest(sampleTest, pass);
 }
