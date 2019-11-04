@@ -24,6 +24,10 @@ deps
 - [NVIDIA blog: Production Deep Learning with NVIDIA GPU Inference Engine](https://devblogs.nvidia.com/production-deep-learning-nvidia-gpu-inference-engine/)
 
 
-## SCHEDULE
+## TODO SCHEDULE
 
-- plugin
+- plugin & extend layers
+
+- model load sample
+  - caffe model
+  - gie model

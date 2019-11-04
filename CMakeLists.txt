@@ -65,3 +65,15 @@ TARGET_LINK_LIBRARIES(trtexec PUBLIC
     ${CUDA_LIBRARY_PATH}/libnvrtc.so
     ${CUDNN_LIBRARY_PATH}/libcudnn.so
 )
+
+ADD_EXECUTABLE(sample_fasterRCNN src/sampleFasterRCNN/sampleFasterRCNN.cpp include/logger.cpp)
+TARGET_LINK_LIBRARIES(sample_fasterRCNN PUBLIC
+    ${TENSORRT_LIBRARY_PATH}/libnvinfer.so
+    ${TENSORRT_LIBRARY_PATH}/libnvinfer_plugin.so
+    ${TENSORRT_LIBRARY_PATH}/libnvcaffe_parser.so
+    ${CUDA_LIBRARY_PATH}/libcublas.so
+    ${CUDA_LIBRARY_PATH}/libcudart.so
+    ${CUDA_LIBRARY_PATH}/libnvblas.so
+    ${CUDA_LIBRARY_PATH}/libnvrtc.so
+    ${CUDNN_LIBRARY_PATH}/libcudnn.so
+)
