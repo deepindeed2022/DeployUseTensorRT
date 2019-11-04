@@ -1,3 +1,6 @@
 build/*
 deps/*
 ignore/*
+data/*/*.caffemodel
+data/*/*.tgz
+data/*/*.tar.gz

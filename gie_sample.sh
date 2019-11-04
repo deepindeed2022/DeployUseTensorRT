@@ -37,8 +37,20 @@
 export LD_LIBRARY_PATH=deps/tensorrt-5.1.2-cuda9.0-cudnn7.5/lib/:deps/cudnn7.5/lib64:deps/cuda9.0/lib64
 workdir=data/googlenet/
 
-./deps/tensorrt-5.1.2-cuda9.0-cudnn7.5/bin/giexec \
+echo "- generate gie model"
+./tools/giexec \
     --deploy=${workdir}/googlenet.prototxt \
     --model=${workdir}/googlenet.caffemodel \
     --output=prob --saveEngine=${workdir}/googlenet_gie.bin \
     --device=0 --verbose
+
+
+echo "- parse_layer"
+./tools/parse_layer.py data/faster-rcnn/faster_rcnn_test_iplugin.prototxt
+
+echo "- faster rcnn"
+if [ ! -d build ]; then 
+    mkdir build 
+fi
+cd build & cmake .. & make -j4
+./build/sample_fasterRCNN --useDLACore=-1
