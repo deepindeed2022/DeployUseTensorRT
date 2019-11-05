@@ -1,4 +1,4 @@
-#include <algorithm>
+﻿#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -102,7 +102,7 @@ void writePPMFileWithBBox(const std::string& filename, PPM& ppm, const BBox& bbo
     }
     outfile.write(reinterpret_cast<char*>(ppm.buffer), ppm.w * ppm.h * 3);
 }
-
+// 这个里面包含Builder的创建和设置，相当于模型的数据化与加载
 void caffeToTRTModel(const std::string& deployFile,           // Name for caffe prototxt
                      const std::string& modelFile,            // Name for model
                      const std::vector<std::string>& outputs, // Network outputs
@@ -118,6 +118,14 @@ void caffeToTRTModel(const std::string& deployFile,           // Name for caffe 
     ICaffeParser* parser = createCaffeParser();
 
     gLogInfo << "Begin parsing model..." << std::endl;
+    // 由于该模型是FP32的模型，所以DataType::kFLOAT
+    // enum class DataType : int
+    // {
+    //     kFLOAT = 0, //!< FP32 format.
+    //     kHALF = 1,  //!< FP16 format.
+    //     kINT8 = 2,  //!< quantized INT8 format.
+    //     kINT32 = 3  //!< INT32 format.
+    // };
     const IBlobNameToTensor* blobNameToTensor = parser->parse(locateFile(deployFile).c_str(),
                                                               locateFile(modelFile).c_str(),
                                                               *network,
@@ -129,8 +137,12 @@ void caffeToTRTModel(const std::string& deployFile,           // Name for caffe 
 
     // Build the engine
     builder->setMaxBatchSize(maxBatchSize);
-    builder->setMaxWorkspaceSize(10 << 20); // We need about 6MB of scratch space for the plugin layer for batch size 5
-
+    // We need about 6MB of scratch space for the plugin layer for batch size 5
+    builder->setMaxWorkspaceSize(10 << 20); 
+    // 
+    // 如果模型是FP16的模型,可以通过设置交叉存存储方式的模式来提高性能
+    // builder->setFp16Mode(true);
+    //
     samplesCommon::enableDLA(builder, gArgs.useDLACore);
 
     gLogInfo << "Begin building engine..." << std::endl;
@@ -177,6 +189,7 @@ void doInference(IExecutionContext& context, float* inputData, float* inputImInf
     CHECK(cudaMalloc(&buffers[outputIndex1], clsProbSize * sizeof(float)));  // cls_prob
     CHECK(cudaMalloc(&buffers[outputIndex2], roisSize * sizeof(float)));     // rois
 
+    // 给异步操作创建流
     cudaStream_t stream;
     CHECK(cudaStreamCreate(&stream));
 
@@ -293,9 +306,11 @@ int main(int argc, char** argv)
     gLogger.reportTestStart(sampleTest);
 
     IHostMemory* trtModelStream{nullptr};
+
+    // Initialize and register all the existing TensorRT plugins to the Plugin Registry with an optional namespace.
     initLibNvInferPlugins(&gLogger.getTRTLogger(), "");
 
-    // Batch size
+    // 设置Batch size
     const int N = 5;
     // Create a TensorRT model from the caffe model and serialize it to a stream
     caffeToTRTModel("faster_rcnn_test_iplugin.prototxt",

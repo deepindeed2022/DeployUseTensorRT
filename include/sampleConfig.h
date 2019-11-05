@@ -59,8 +59,7 @@
 class SampleConfig : public nvonnxparser::IOnnxConfig
 {
 public:
-    enum class InputDataFormat : int
-    {
+    enum class InputDataFormat : int {
         kASCII = 0,
         kPPM = 1
     };
@@ -100,8 +99,7 @@ public:
         , mPrintLayercInfo(false)
         , mDebugBuilder(false)
         , mInputDataFormat(InputDataFormat::kASCII)
-        , mTopK(0)
-    {
+        , mTopK(0) {
 #ifdef ONNX_DEBUG
         if (isDebug())
         {
@@ -126,8 +124,7 @@ protected:
 public:
     void setModelDtype(const nvinfer1::DataType mdt) { mModelDtype = mdt; }
 
-    nvinfer1::DataType getModelDtype() const
-    {
+    nvinfer1::DataType getModelDtype() const {
         return mModelDtype;
     }
 
@@ -135,7 +132,7 @@ public:
 
     void setModelFileName(const char* onnxFilename)
     {
-        mModelFilename = string(onnxFilename);
+        mModelFilename = std::string(onnxFilename);
     }
     Verbosity getVerbosityLevel() const { return mVerbosity; }
     void addVerbosity() { ++mVerbosity; }
@@ -144,17 +141,17 @@ public:
     const char* getEngineFileName() const { return mEngineFilename.c_str(); }
     void setEngineFileName(const char* engineFilename)
     {
-        mEngineFilename = string(engineFilename);
+        mEngineFilename = std::string(engineFilename);
     }
     const char* getTextFileName() const { return mTextFilename.c_str(); }
     void setTextFileName(const char* textFilename)
     {
-        mTextFilename = string(textFilename);
+        mTextFilename = std::string(textFilename);
     }
     const char* getFullTextFileName() const { return mFullTextFilename.c_str(); }
     void setFullTextFileName(const char* fullTextFilename)
     {
-        mFullTextFilename = string(fullTextFilename);
+        mFullTextFilename = std::string(fullTextFilename);
     }
     bool getPrintLayerInfo() const { return mPrintLayercInfo; }
     void setPrintLayerInfo(bool b) { mPrintLayercInfo = b; } //!< get the boolean variable corresponding to the Layer Info, see getPrintLayerInfo()
@@ -183,12 +180,12 @@ public:
     const char* getImageFileName() const { return mImageFilename.c_str(); } //!<  set Image file name (PPM or ASCII)
     void setImageFileName(const char* imageFilename)                        //!< get the Image file name
     {
-        mImageFilename = string(imageFilename);
+        mImageFilename = std::string(imageFilename);
     }
     const char* getReferenceFileName() const { return mReferenceFilename.c_str(); }
     void setReferenceFileName(const char* referenceFilename) //!<  set reference file name
     {
-        mReferenceFilename = string(referenceFilename);
+        mReferenceFilename = std::string(referenceFilename);
     }
 
     void setInputDataFormat(InputDataFormat idt) { mInputDataFormat = idt; } //!<  specifies expected data format of the image file (PPM or ASCII)
@@ -197,20 +194,19 @@ public:
     const char* getOutputFileName() const { return mOutputFilename.c_str(); } //!<  specifies the file to save the results
     void setOutputFileName(const char* outputFilename)                        //!<  get the output file name
     {
-        mOutputFilename = string(outputFilename);
+        mOutputFilename = std::string(outputFilename);
     }
 
     const char* getCalibrationFileName() const { return mCalibrationFilename.c_str(); } //!<  specifies the file containing the list of image files for int8 calibration
     void setCalibrationFileName(const char* calibrationFilename)                        //!<  get the int 8 calibration list file name
     {
-        mCalibrationFilename = string(calibrationFilename);
+        mCalibrationFilename = std::string(calibrationFilename);
     }
 
     uint64_t getTopK() const { return mTopK; }
     void setTopK(uint64_t topK) { mTopK = topK; } //!<  If this options is specified, return the K top probabilities.
 
-    bool isDebug() const
-    {
+    bool isDebug() const {
 #if ONNX_DEBUG
         return (std::getenv("ONNX_DEBUG") ? true : false);
 #else
