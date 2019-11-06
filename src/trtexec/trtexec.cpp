@@ -32,8 +32,7 @@ using namespace nvonnxparser;
 
 const std::string gSampleName = "TensorRT.trtexec";
 
-struct Params
-{
+struct Params {
     std::string deployFile{};
     std::string modelFile{};
     std::string engine{};
@@ -93,8 +92,7 @@ float percentile(float percentage, std::vector<float>& times)
     return std::numeric_limits<float>::infinity();
 }
 
-class RndInt8Calibrator : public IInt8EntropyCalibrator2
-{
+class RndInt8Calibrator : public IInt8EntropyCalibrator2 {
 public:
     RndInt8Calibrator(int totalSamples, std::string cacheFile)
         : mTotalSamples(totalSamples)
@@ -179,8 +177,7 @@ void configureBuilder(IBuilder* builder, RndInt8Calibrator& calibrator)
     }
 }
 
-ICudaEngine* caffeToTRTModel()
-{
+ICudaEngine* caffeToTRTModel() {
     // create the builder
     IBuilder* builder = createInferBuilder(gLogger.getTRTLogger());
     if (builder == nullptr)
@@ -245,8 +242,7 @@ ICudaEngine* caffeToTRTModel()
     return engine;
 }
 
-ICudaEngine* uffToTRTModel()
-{
+ICudaEngine* uffToTRTModel() {
     // create the builder
     IBuilder* builder = createInferBuilder(gLogger.getTRTLogger());
     if (builder == nullptr)
@@ -304,8 +300,7 @@ ICudaEngine* uffToTRTModel()
     return engine;
 }
 
-ICudaEngine* onnxToTRTModel()
-{
+ICudaEngine* onnxToTRTModel() {
     // create the builder
     IBuilder* builder = createInferBuilder(gLogger.getTRTLogger());
     if (builder == nullptr)
@@ -473,13 +468,11 @@ bool parseAtoi(const char* arg, const char* name, T& value)
     return match;
 }
 
-bool parseInt(const char* arg, const char* name, int& value)
-{
+bool parseInt(const char* arg, const char* name, int& value) {
     return parseAtoi<int>(arg, name, value);
 }
 
-bool parseUnsigned(const char* arg, const char* name, unsigned int& value)
-{
+bool parseUnsigned(const char* arg, const char* name, unsigned int& value) {
     return parseAtoi<unsigned int>(arg, name, value);
 }
 
@@ -540,30 +533,24 @@ bool parseArgs(int argc, char* argv[])
     for (int j = 1; j < argc; j++)
     {
         if (parseString(argv[j], "model", gParams.modelFile)
-            || parseString(argv[j], "deploy", gParams.deployFile))
-        {
+            || parseString(argv[j], "deploy", gParams.deployFile)) {
             continue;
         }
-        if (parseString(argv[j], "saveEngine", gParams.saveEngine))
-        {
+        if (parseString(argv[j], "saveEngine", gParams.saveEngine)) {
             continue;
         }
-        if (parseString(argv[j], "loadEngine", gParams.loadEngine))
-        {
+        if (parseString(argv[j], "loadEngine", gParams.loadEngine)) {
             continue;
         }
-        if (parseString(argv[j], "engine", gParams.engine))
-        {
+        if (parseString(argv[j], "engine", gParams.engine)) {
             gLogError << "--engine has been deprecated. Please use --saveEngine and --loadEngine instead." << std::endl;
             return false;
         }
-        if (parseString(argv[j], "uff", gParams.uffFile))
-        {
+        if (parseString(argv[j], "uff", gParams.uffFile)) {
             continue;
         }
 
-        if (parseString(argv[j], "onnx", gParams.onnxModelFile))
-        {
+        if (parseString(argv[j], "onnx", gParams.onnxModelFile)) {
             continue;
         }
 
@@ -571,25 +558,21 @@ bool parseArgs(int argc, char* argv[])
             continue;
 
         std::string input;
-        if (parseString(argv[j], "input", input))
-        {
+        if (parseString(argv[j], "input", input)) {
             gLogWarning << "--input has been deprecated and ignored." << std::endl;
             continue;
         }
 
         std::string output;
-        if (parseString(argv[j], "output", output))
-        {
+        if (parseString(argv[j], "output", output)) {
             gParams.outputs.push_back(output);
             continue;
         }
 
         std::string uffInput;
-        if (parseString(argv[j], "uffInput", uffInput))
-        {
+        if (parseString(argv[j], "uffInput", uffInput)) {
             std::vector<std::string> uffInputStrs = split(uffInput, ',');
-            if (uffInputStrs.size() != 4)
-            {
+            if (uffInputStrs.size() != 4) {
                 gLogError << "Invalid uffInput: " << uffInput << std::endl;
                 return false;
             }
@@ -625,17 +608,14 @@ bool parseArgs(int argc, char* argv[])
     return validateArgs();
 }
 
-static ICudaEngine* createEngine()
-{
+static ICudaEngine* createEngine() {
     ICudaEngine* engine;
     // load directly from serialized engine file if deploy not specified
-    if (!gParams.loadEngine.empty())
-    {
+    if (!gParams.loadEngine.empty()) {
         std::vector<char> trtModelStream;
         size_t size{0};
         std::ifstream file(gParams.loadEngine, std::ios::binary);
-        if (file.good())
-        {
+        if (file.good()) {
             file.seekg(0, file.end);
             size = file.tellg();
             file.seekg(0, file.beg);
@@ -645,8 +625,7 @@ static ICudaEngine* createEngine()
         }
 
         IRuntime* infer = createInferRuntime(gLogger.getTRTLogger());
-        if (gParams.useDLACore >= 0)
-        {
+        if (gParams.useDLACore >= 0) {
             infer->setDLACore(gParams.useDLACore);
         }
 
@@ -657,39 +636,29 @@ static ICudaEngine* createEngine()
         return engine;
     }
 
-    if ((!gParams.deployFile.empty()) || (!gParams.uffFile.empty()) || (!gParams.onnxModelFile.empty()))
-    {
+    if ((!gParams.deployFile.empty()) || (!gParams.uffFile.empty()) || (!gParams.onnxModelFile.empty())) {
 
-        if (!gParams.uffFile.empty())
-        {
+        if (!gParams.uffFile.empty()) {
             engine = uffToTRTModel();
-        }
-        else if (!gParams.onnxModelFile.empty())
-        {
+        } else if (!gParams.onnxModelFile.empty()) {
             engine = onnxToTRTModel();
-        }
-        else
-        {
+        } else {
             engine = caffeToTRTModel();
         }
 
-        if (!engine)
-        {
+        if (!engine) {
             gLogError << "Engine could not be created" << std::endl;
             return nullptr;
         }
 
-        if (!gParams.saveEngine.empty())
-        {
+        if (!gParams.saveEngine.empty()) {
             std::ofstream p(gParams.saveEngine, std::ios::binary);
-            if (!p)
-            {
+            if (!p) {
                 gLogError << "could not open plan output file" << std::endl;
                 return nullptr;
             }
             IHostMemory* ptr = engine->serialize();
-            if (ptr == nullptr)
-            {
+            if (ptr == nullptr) {
                 gLogError << "could not serialize engine." << std::endl;
                 return nullptr;
             }
@@ -699,33 +668,25 @@ static ICudaEngine* createEngine()
         }
         return engine;
     }
-
     // complain about empty deploy file
     gLogError << "Deploy file not specified" << std::endl;
     return nullptr;
 }
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     // create a TensorRT model from the caffe/uff/onnx model and serialize it to a stream
-
     auto sampleTest = gLogger.defineTest(gSampleName, argc, const_cast<const char**>(argv));
-
     gLogger.reportTestStart(sampleTest);
-
-    if (!parseArgs(argc, argv))
-    {
+    if (!parseArgs(argc, argv)) {
         return gLogger.reportFail(sampleTest);
     }
 
-    if (gParams.help)
-    {
+    if (gParams.help) {
         printUsage();
         return gLogger.reportPass(sampleTest);
     }
 
-    if (gParams.verbose)
-    {
+    if (gParams.verbose) {
         setReportableSeverity(Severity::kVERBOSE);
     }
 
@@ -734,18 +695,14 @@ int main(int argc, char** argv)
     initLibNvInferPlugins(&gLogger.getTRTLogger(), "");
 
     ICudaEngine* engine = createEngine();
-    if (!engine)
-    {
+    if (!engine) {
         gLogError << "Engine could not be created" << std::endl;
         return gLogger.reportFail(sampleTest);
     }
 
-    if (gParams.uffFile.empty() && gParams.onnxModelFile.empty())
-    {
+    if (gParams.uffFile.empty() && gParams.onnxModelFile.empty()) {
         nvcaffeparser1::shutdownProtobufLibrary();
-    }
-    else if (gParams.deployFile.empty() && gParams.onnxModelFile.empty())
-    {
+    } else if (gParams.deployFile.empty() && gParams.onnxModelFile.empty()) {
         nvuffparser::shutdownProtobufLibrary();
     }
 

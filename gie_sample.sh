@@ -35,7 +35,7 @@
 #   -h, --help              Print usage
 
 export LD_LIBRARY_PATH=deps/tensorrt-5.1.2-cuda9.0-cudnn7.5/lib/:deps/cudnn7.5/lib64:deps/cuda9.0/lib64
-workdir=data/googlenet/
+workdir=data/googlenet
 
 echo "- generate gie model"
 ./tools/giexec \
@@ -46,11 +46,14 @@ echo "- generate gie model"
 
 
 echo "- parse_layer"
-./tools/parse_layer.py data/faster-rcnn/faster_rcnn_test_iplugin.prototxt
+python ./tools/parse_layer.py data/faster-rcnn/faster_rcnn_test_iplugin.prototxt
 
 echo "- faster rcnn"
 if [ ! -d build ]; then 
     mkdir build 
 fi
-cd build & cmake .. & make -j4
+cd build && cmake .. && make -j4 && cd ..
 ./build/sampleFasterRCNN --useDLACore=-1
+
+echo " - trtexec load sstream model"
+./build/trtexec --loadEngine=${workdir}/googlenet_gie.bin

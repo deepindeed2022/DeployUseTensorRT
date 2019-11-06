@@ -41,9 +41,7 @@ using namespace plugin;
 		}                                                      \
 	} while (0)
 
-constexpr long double operator"" _GB(long double val) {
-	return val * (1 << 30);
-}
+constexpr long double operator"" _GB(long double val) { return val * (1 << 30); }
 constexpr long double operator"" _MB(long double val) { return val * (1 << 20); }
 constexpr long double operator"" _KB(long double val) { return val * (1 << 10); }
 
@@ -89,8 +87,7 @@ struct DtrProfiler : public nvinfer1::IProfiler
 		float totalTime = 0;
 		std::string layerNameStr = "TensorRT layer name";
 		int maxLayerNameLength = std::max(static_cast<int>(layerNameStr.size()), 70);
-		for (const auto& elem : value.mProfile)
-		{
+		for (const auto& elem : value.mProfile) {
 			totalTime += elem.second.time;
 			maxLayerNameLength = std::max(maxLayerNameLength, static_cast<int>(elem.first.size()));
 		}

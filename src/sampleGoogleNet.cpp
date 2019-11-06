@@ -185,7 +185,6 @@ dtrCommon::CaffeNNParams initializeNNParams(const dtrCommon::Args& args)
     else //!< Use default directories if user hasn't provided directory paths
     {
         params.dataDirs.push_back("data/googlenet/");
-        params.dataDirs.push_back("data/samples/googlenet/");
     }
     params.prototxtFileName = "googlenet.prototxt";
     params.weightsFileName = "googlenet.caffemodel";
@@ -211,13 +210,11 @@ int main(int argc, char** argv)
 {
     dtrCommon::Args args;
     bool argsOK = dtrCommon::parseArgs(args, argc, argv);
-    if (args.help)
-    {
+    if (args.help) {
         printHelpInfo();
         return EXIT_SUCCESS;
     }
-    if (!argsOK)
-    {
+    if (!argsOK) {
         gLogError << "Invalid arguments" << std::endl;
         printHelpInfo();
         return EXIT_FAILURE;
@@ -232,16 +229,13 @@ int main(int argc, char** argv)
 
     gLogInfo << "Building and running a GPU inference engine for GoogleNet" << std::endl;
 
-    if (!sample.build())
-    {
+    if (!sample.build()) {
         return gLogger.reportFail(sampleTest);
     }
-    if (!sample.infer())
-    {
+    if (!sample.infer()) {
         return gLogger.reportFail(sampleTest);
     }
-    if (!sample.teardown())
-    {
+    if (!sample.teardown()) {
         return gLogger.reportFail(sampleTest);
     }
 
