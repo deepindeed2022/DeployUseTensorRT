@@ -16,10 +16,8 @@
 #include "logger.h"
 #include "argsParser.h"
 
-const std::string gSampleName = "TensorRT.sample_fasterRCNN";
-SimpleProfiler gProfiler("FasterRCNN-Profiler.log");
 
-static samplesCommon::Args gArgs;
+static dtrCommon::Args gArgs;
 using namespace nvinfer1;
 using namespace nvcaffeparser1;
 using namespace plugin;
@@ -41,67 +39,14 @@ const char* OUTPUT_BLOB_NAME0 = "bbox_pred";
 const char* OUTPUT_BLOB_NAME1 = "cls_prob";
 const char* OUTPUT_BLOB_NAME2 = "rois";
 
-struct PPM
-{
-    std::string magic, fileName;
-    int h, w, max;
-    uint8_t buffer[INPUT_C * INPUT_H * INPUT_W];
-};
-
-struct BBox
-{
-    float x1, y1, x2, y2;
-};
+using PPM = dtrCommon::PPM<INPUT_C, INPUT_H, INPUT_W>;
 
 std::string locateFile(const std::string& input)
 {
-    std::vector<std::string> dirs{"data/samples/faster-rcnn/", "data/faster-rcnn/"};
+    std::vector<std::string> dirs{"data/faster-rcnn/"};
     return locateFile(input, dirs);
 }
 
-// Simple PPM (portable pixel map) reader
-void readPPMFile(const std::string& filename, PPM& ppm)
-{
-    ppm.fileName = filename;
-    std::ifstream infile(locateFile(filename), std::ifstream::binary);
-    infile >> ppm.magic >> ppm.w >> ppm.h >> ppm.max;
-    infile.seekg(1, infile.cur);
-    infile.read(reinterpret_cast<char*>(ppm.buffer), ppm.w * ppm.h * 3);
-}
-
-void writePPMFileWithBBox(const std::string& filename, PPM& ppm, const BBox& bbox)
-{
-    std::ofstream outfile("./" + filename, std::ofstream::binary);
-    assert(!outfile.fail());
-    outfile << "P6"
-            << "\n"
-            << ppm.w << " " << ppm.h << "\n"
-            << ppm.max << "\n";
-    auto round = [](float x) -> int { return int(std::floor(x + 0.5f)); };
-    for (int x = int(bbox.x1); x < int(bbox.x2); ++x)
-    {
-        // Bbox top border
-        ppm.buffer[(round(bbox.y1) * ppm.w + x) * 3] = 255;
-        ppm.buffer[(round(bbox.y1) * ppm.w + x) * 3 + 1] = 0;
-        ppm.buffer[(round(bbox.y1) * ppm.w + x) * 3 + 2] = 0;
-        // Bbox bottom border
-        ppm.buffer[(round(bbox.y2) * ppm.w + x) * 3] = 255;
-        ppm.buffer[(round(bbox.y2) * ppm.w + x) * 3 + 1] = 0;
-        ppm.buffer[(round(bbox.y2) * ppm.w + x) * 3 + 2] = 0;
-    }
-    for (int y = int(bbox.y1); y < int(bbox.y2); ++y)
-    {
-        // Bbox left border
-        ppm.buffer[(y * ppm.w + round(bbox.x1)) * 3] = 255;
-        ppm.buffer[(y * ppm.w + round(bbox.x1)) * 3 + 1] = 0;
-        ppm.buffer[(y * ppm.w + round(bbox.x1)) * 3 + 2] = 0;
-        // Bbox right border
-        ppm.buffer[(y * ppm.w + round(bbox.x2)) * 3] = 255;
-        ppm.buffer[(y * ppm.w + round(bbox.x2)) * 3 + 1] = 0;
-        ppm.buffer[(y * ppm.w + round(bbox.x2)) * 3 + 2] = 0;
-    }
-    outfile.write(reinterpret_cast<char*>(ppm.buffer), ppm.w * ppm.h * 3);
-}
 // 这个里面包含Builder的创建和设置，相当于模型的数据化与加载
 void caffeToTRTModel(const std::string& deployFile,           // Name for caffe prototxt
                      const std::string& modelFile,            // Name for model
@@ -143,7 +88,7 @@ void caffeToTRTModel(const std::string& deployFile,           // Name for caffe 
     // 如果模型是FP16的模型,可以通过设置交叉存存储方式的模式来提高性能
     // builder->setFp16Mode(true);
     //
-    samplesCommon::enableDLA(builder, gArgs.useDLACore);
+    dtrCommon::enableDLA(builder, gArgs.useDLACore);
 
     gLogInfo << "Begin building engine..." << std::endl;
     ICudaEngine* engine = builder->buildCudaEngine(*network);
@@ -290,11 +235,11 @@ void printHelp(const char* name)
         << "  --useDLACore=N    Specify the DLA engine to run on.\n";
 }
 
-
-int main(int argc, char** argv)
-{
-    setReportableSeverity(Severity::kINFO);
-    bool argsOK = samplesCommon::parseArgs(gArgs, argc, argv);
+const std::string gSampleName = "TensorRT.sample_fasterRCNN";
+DtrProfiler gProfiler("FasterRCNN-Profiler.log");
+int main(int argc, char** argv) {
+    // setReportableSeverity(Severity::kINFO);
+    bool argsOK = dtrCommon::parseArgs(gArgs, argc, argv);
     if (gArgs.help || !argsOK)
     {
         printHelp(argv[0]);
@@ -327,7 +272,7 @@ int main(int argc, char** argv)
     assert(ppms.size() <= imageList.size());
     for (int i = 0; i < N; ++i)
     {
-        readPPMFile(imageList[i], ppms[i]);
+        dtrCommon::readPPMFile(imageList[i], ppms[i]);
         imInfo[i * 3] = float(ppms[i].h);     // Number of rows
         imInfo[i * 3 + 1] = float(ppms[i].w); // Number of columns
         imInfo[i * 3 + 2] = 1;                // Image scale
@@ -429,8 +374,8 @@ int main(int argc, char** argv)
                 gLogInfo << "Detected " << CLASSES[c] << " in " << ppms[i].fileName << " with confidence " << scores[idx * OUTPUT_CLS_SIZE + c] * 100.0f << "% "
                          << " (Result stored in " << storeName << ")." << std::endl;
 
-                BBox b{bbox[idx * OUTPUT_BBOX_SIZE + c * 4], bbox[idx * OUTPUT_BBOX_SIZE + c * 4 + 1], bbox[idx * OUTPUT_BBOX_SIZE + c * 4 + 2], bbox[idx * OUTPUT_BBOX_SIZE + c * 4 + 3]};
-                writePPMFileWithBBox(storeName, ppms[i], b);
+                dtrCommon::BBox b{bbox[idx * OUTPUT_BBOX_SIZE + c * 4], bbox[idx * OUTPUT_BBOX_SIZE + c * 4 + 1], bbox[idx * OUTPUT_BBOX_SIZE + c * 4 + 2], bbox[idx * OUTPUT_BBOX_SIZE + c * 4 + 3]};
+                dtrCommon::writePPMFileWithBBox(storeName, ppms[i], b);
             }
         }
         pass &= numDetections >= 1;

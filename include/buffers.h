@@ -16,7 +16,7 @@
 
 using namespace std;
 
-namespace samplesCommon
+namespace dtrCommon
 {
 
 //!
@@ -169,8 +169,8 @@ public:
         for (int i = 0; i < mEngine->getNbBindings(); i++)
         {
             // Create host and device buffers
-            size_t vol = samplesCommon::volume(mEngine->getBindingDimensions(i));
-            size_t elementSize = samplesCommon::getElementSize(mEngine->getBindingDataType(i));
+            size_t vol = dtrCommon::volume(mEngine->getBindingDimensions(i));
+            size_t elementSize = dtrCommon::getElementSize(mEngine->getBindingDataType(i));
             size_t allocationSize = static_cast<size_t>(mBatchSize) * vol * elementSize;
             std::unique_ptr<ManagedBuffer> manBuf{new ManagedBuffer()};
             manBuf->deviceBuffer = DeviceBuffer(allocationSize);
@@ -329,6 +329,6 @@ private:
     std::vector<void*> mDeviceBindings;                          //!< The vector of device buffers needed for engine execution
 };
 
-} // namespace samplesCommon
+} // namespace dtrCommon
 
 #endif // TENSORRT_BUFFERS_H

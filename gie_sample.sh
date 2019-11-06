@@ -42,7 +42,7 @@ echo "- generate gie model"
     --deploy=${workdir}/googlenet.prototxt \
     --model=${workdir}/googlenet.caffemodel \
     --output=prob --saveEngine=${workdir}/googlenet_gie.bin \
-    --device=0 --verbose
+    --device=0 #--verbose
 
 
 echo "- parse_layer"
@@ -53,4 +53,4 @@ if [ ! -d build ]; then
     mkdir build 
 fi
 cd build & cmake .. & make -j4
-./build/sample_fasterRCNN --useDLACore=-1
+./build/sampleFasterRCNN --useDLACore=-1

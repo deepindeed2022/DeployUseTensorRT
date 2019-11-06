@@ -231,7 +231,7 @@ ICudaEngine* caffeToTRTModel()
     RndInt8Calibrator calibrator(1, gParams.calibrationCache);
     configureBuilder(builder, calibrator);
 
-    samplesCommon::enableDLA(builder, gParams.useDLACore);
+    dtrCommon::enableDLA(builder, gParams.useDLACore);
 
     ICudaEngine* engine = builder->buildCudaEngine(*network);
     if (engine == nullptr)
@@ -292,7 +292,7 @@ ICudaEngine* uffToTRTModel()
     RndInt8Calibrator calibrator(1, gParams.calibrationCache);
     configureBuilder(builder, calibrator);
 
-    samplesCommon::enableDLA(builder, gParams.useDLACore);
+    dtrCommon::enableDLA(builder, gParams.useDLACore);
 
     ICudaEngine* engine = builder->buildCudaEngine(*network);
     if (engine == nullptr)
@@ -332,7 +332,7 @@ ICudaEngine* onnxToTRTModel()
     RndInt8Calibrator calibrator(1, gParams.calibrationCache);
     configureBuilder(builder, calibrator);
 
-    samplesCommon::enableDLA(builder, gParams.useDLACore);
+    dtrCommon::enableDLA(builder, gParams.useDLACore);
 
     ICudaEngine* engine = builder->buildCudaEngine(*network);
 
@@ -354,7 +354,7 @@ void doInference(ICudaEngine& engine)
     // Use an aliasing shared_ptr since we don't want engine to be deleted when bufferManager goes out of scope.
     std::shared_ptr<ICudaEngine> emptyPtr{};
     std::shared_ptr<ICudaEngine> aliasPtr(emptyPtr, &engine);
-    samplesCommon::BufferManager bufferManager(aliasPtr, gParams.batchSize);
+    dtrCommon::BufferManager bufferManager(aliasPtr, gParams.batchSize);
     std::vector<void*> buffers = bufferManager.getDeviceBindings();
 
     cudaStream_t stream;

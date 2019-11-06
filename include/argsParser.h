@@ -10,15 +10,14 @@
 #endif
 #include <iostream>
 
-namespace samplesCommon
+namespace dtrCommon
 {
 
 //!
-//! \brief The SampleParams structure groups the basic parameters required by
+//! \brief The NNParams structure groups the basic parameters required by
 //!        all sample networks.
 //!
-struct SampleParams
-{
+struct NNParams {
     int batchSize; //!< Number of inputs in a batch
     int dlaCore{-1};  //!< Specify the DLA core to run network on.
     bool int8{false}; //!< Allow runnning the network in Int8 mode.
@@ -29,11 +28,10 @@ struct SampleParams
 };
 
 //!
-//! \brief The CaffeSampleParams structure groups the additional parameters required by
+//! \brief The CaffeNNParams structure groups the additional parameters required by
 //!         networks that use caffe
 //!
-struct CaffeSampleParams : public SampleParams
-{
+struct CaffeNNParams : public NNParams {
     std::string prototxtFileName; //!< Filename of prototxt design file of a network
     std::string weightsFileName;  //!< Filename of trained weights file of a network
 };
@@ -41,8 +39,7 @@ struct CaffeSampleParams : public SampleParams
 //!
 //! /brief Struct to maintain command-line arguments.
 //!
-struct Args
-{
+struct Args {
     bool runInInt8{false};
     bool runInFp16{false};
     bool help{false};
@@ -57,10 +54,8 @@ struct Args
 //!
 //! \return boolean If return value is true, execution can continue, otherwise program should exit
 //!
-inline bool parseArgs(Args& args, int argc, char* argv[])
-{
-    while (1)
-    {
+inline bool parseArgs(Args& args, int argc, char* argv[]) {
+    while (1) {
         int arg;
         static struct option long_options[] = {
             {"help", no_argument, 0, 'h'},
@@ -105,6 +100,6 @@ inline bool parseArgs(Args& args, int argc, char* argv[])
     return true;
 }
 
-} // namespace samplesCommon
+} // namespace dtrCommon
 
 #endif // TENSORRT_ARGS_PARSER_H

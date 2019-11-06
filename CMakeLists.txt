@@ -41,39 +41,19 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE_DIRECTORIES(include)
-ADD_EXECUTABLE(test_googlenet src/sampleGoogleNet.cpp include/logger.cpp)
-TARGET_LINK_LIBRARIES(test_googlenet PUBLIC
-    ${TENSORRT_LIBRARY_PATH}/libnvinfer.so
-    ${TENSORRT_LIBRARY_PATH}/libnvinfer_plugin.so
-    ${TENSORRT_LIBRARY_PATH}/libnvcaffe_parser.so
-    ${CUDA_LIBRARY_PATH}/libcublas.so
-    ${CUDA_LIBRARY_PATH}/libcudart.so
-    ${CUDA_LIBRARY_PATH}/libnvblas.so
-    ${CUDA_LIBRARY_PATH}/libnvrtc.so
-    ${CUDNN_LIBRARY_PATH}/libcudnn.so
-)
-
-ADD_EXECUTABLE(trtexec src/trtexec/trtexec.cpp include/logger.cpp)
-TARGET_LINK_LIBRARIES(trtexec PUBLIC
-    ${TENSORRT_LIBRARY_PATH}/libnvinfer.so
-    ${TENSORRT_LIBRARY_PATH}/libnvinfer_plugin.so
-    ${TENSORRT_LIBRARY_PATH}/libnvcaffe_parser.so
-    ${TENSORRT_LIBRARY_PATH}/libnvonnxparser.so
-    ${CUDA_LIBRARY_PATH}/libcublas.so
-    ${CUDA_LIBRARY_PATH}/libcudart.so
-    ${CUDA_LIBRARY_PATH}/libnvblas.so
-    ${CUDA_LIBRARY_PATH}/libnvrtc.so
-    ${CUDNN_LIBRARY_PATH}/libcudnn.so
-)
-
-ADD_EXECUTABLE(sample_fasterRCNN src/sampleFasterRCNN/sampleFasterRCNN.cpp include/logger.cpp)
-TARGET_LINK_LIBRARIES(sample_fasterRCNN PUBLIC
-    ${TENSORRT_LIBRARY_PATH}/libnvinfer.so
-    ${TENSORRT_LIBRARY_PATH}/libnvinfer_plugin.so
-    ${TENSORRT_LIBRARY_PATH}/libnvcaffe_parser.so
-    ${CUDA_LIBRARY_PATH}/libcublas.so
-    ${CUDA_LIBRARY_PATH}/libcudart.so
-    ${CUDA_LIBRARY_PATH}/libnvblas.so
-    ${CUDA_LIBRARY_PATH}/libnvrtc.so
-    ${CUDNN_LIBRARY_PATH}/libcudnn.so
-)
+file(GLOB_RECURSE CPP_SRC_LIST ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+foreach(FILE_PATH ${CPP_SRC_LIST})
+    STRING(REGEX REPLACE ".+/(.+)\\..*" "\\1" FILE_NAME ${FILE_PATH})
+    add_executable(${FILE_NAME} ${FILE_PATH} include/logger.cpp)
+    TARGET_LINK_LIBRARIES(${FILE_NAME} PUBLIC
+        ${TENSORRT_LIBRARY_PATH}/libnvinfer.so
+        ${TENSORRT_LIBRARY_PATH}/libnvinfer_plugin.so
+        ${TENSORRT_LIBRARY_PATH}/libnvcaffe_parser.so
+        ${TENSORRT_LIBRARY_PATH}/libnvonnxparser.so
+        ${CUDA_LIBRARY_PATH}/libcublas.so
+        ${CUDA_LIBRARY_PATH}/libcudart.so
+        ${CUDA_LIBRARY_PATH}/libnvblas.so
+        ${CUDA_LIBRARY_PATH}/libnvrtc.so
+        ${CUDNN_LIBRARY_PATH}/libcudnn.so
+    )
+endforeach()

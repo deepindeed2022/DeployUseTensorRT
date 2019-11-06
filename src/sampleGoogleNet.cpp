@@ -1,5 +1,5 @@
 ﻿//!
-//! sampleGoogleNet.cpp
+//! CaffeGoogleNet.cpp
 //! This file contains the implementation of the GoogleNet sample. It creates the network using
 //! the GoogleNet caffe model.
 //! It can be run with the following command line:
@@ -30,21 +30,21 @@ all the layer have supported in TensorRT libs
 #include <fstream>
 #include <iostream>
 #include <sstream>
-
+#include "basemodel.h"
 const std::string gSampleName = "TensorRT.sample_googlenet";
 
 //!
-//! \brief  The SampleGoogleNet class implements the GoogleNet sample
+//! \brief  The CaffeGoogleNet class implements the GoogleNet sample
 //!
 //! \details It creates the network using a caffe model
 //!
-class SampleGoogleNet
+class CaffeGoogleNet : ICaffeBaseModel
 {
     template <typename T>
-    using SampleUniquePtr = std::unique_ptr<T, samplesCommon::InferDeleter>;
+    using SampleUniquePtr = std::unique_ptr<T, dtrCommon::DtrInferDeleter>;
 
 public:
-    SampleGoogleNet(const samplesCommon::CaffeSampleParams& params)
+    CaffeGoogleNet(const dtrCommon::CaffeNNParams& params)
         : mParams(params)
     {
     }
@@ -64,7 +64,7 @@ public:
     //!
     bool teardown();
 
-    samplesCommon::CaffeSampleParams mParams;
+    dtrCommon::CaffeNNParams mParams;
 
 private:
     std::shared_ptr<nvinfer1::ICudaEngine> mEngine = nullptr; //!< The TensorRT engine used to run the network
@@ -83,7 +83,7 @@ private:
 //!
 //! \return Returns true if the engine was created successfully and false otherwise
 //!
-bool SampleGoogleNet::build()
+bool CaffeGoogleNet::build()
 {
     auto builder = SampleUniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
     if (!builder)
@@ -99,7 +99,7 @@ bool SampleGoogleNet::build()
 
     constructNetwork(builder, network, parser);
 
-    mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(builder->buildCudaEngine(*network), samplesCommon::InferDeleter());
+    mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(builder->buildCudaEngine(*network), dtrCommon::DtrInferDeleter());
     if (!mEngine)
         return false;
 
@@ -114,7 +114,7 @@ bool SampleGoogleNet::build()
 //!
 //! \param builder Pointer to the engine builder
 //!
-void SampleGoogleNet::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder, SampleUniquePtr<nvinfer1::INetworkDefinition>& network, SampleUniquePtr<nvcaffeparser1::ICaffeParser>& parser)
+void CaffeGoogleNet::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder, SampleUniquePtr<nvinfer1::INetworkDefinition>& network, SampleUniquePtr<nvcaffeparser1::ICaffeParser>& parser)
 {
     const nvcaffeparser1::IBlobNameToTensor* blobNameToTensor = parser->parse(
         locateFile(mParams.prototxtFileName, mParams.dataDirs).c_str(),
@@ -127,7 +127,7 @@ void SampleGoogleNet::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& buil
 
     builder->setMaxBatchSize(mParams.batchSize);
     builder->setMaxWorkspaceSize(16_MB);
-    samplesCommon::enableDLA(builder.get(), mParams.dlaCore);
+    dtrCommon::enableDLA(builder.get(), mParams.dlaCore);
 }
 
 //!
@@ -136,10 +136,10 @@ void SampleGoogleNet::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& buil
 //! \details This function is the main execution function of the sample. It allocates the buffer,
 //!          sets inputs and executes the engine.
 //!
-bool SampleGoogleNet::infer()
+bool CaffeGoogleNet::infer()
 {
     // Create RAII buffer manager object
-    samplesCommon::BufferManager buffers(mEngine, mParams.batchSize);
+    dtrCommon::BufferManager buffers(mEngine, mParams.batchSize);
 
     auto context = SampleUniquePtr<nvinfer1::IExecutionContext>(mEngine->createExecutionContext());
     if (!context)
@@ -165,7 +165,7 @@ bool SampleGoogleNet::infer()
 //!
 //! \brief This function can be used to clean up any state created in the sample class
 //!
-bool SampleGoogleNet::teardown()
+bool CaffeGoogleNet::teardown()
 {
     //! Clean up the libprotobuf files as the parsing is complete
     //! \note It is not safe to use any other part of the protocol buffers library after
@@ -177,9 +177,9 @@ bool SampleGoogleNet::teardown()
 //!
 //! \brief This function initializes members of the params struct using the command line args
 //!
-samplesCommon::CaffeSampleParams initializeSampleParams(const samplesCommon::Args& args)
+dtrCommon::CaffeNNParams initializeNNParams(const dtrCommon::Args& args)
 {
-    samplesCommon::CaffeSampleParams params;
+    dtrCommon::CaffeNNParams params;
     if (args.dataDirs.size() != 0) //!< Use the data directory provided by the user
         params.dataDirs = args.dataDirs;
     else //!< Use default directories if user hasn't provided directory paths
@@ -209,8 +209,8 @@ void printHelpInfo()
 
 int main(int argc, char** argv)
 {
-    samplesCommon::Args args;
-    bool argsOK = samplesCommon::parseArgs(args, argc, argv);
+    dtrCommon::Args args;
+    bool argsOK = dtrCommon::parseArgs(args, argc, argv);
     if (args.help)
     {
         printHelpInfo();
@@ -227,8 +227,8 @@ int main(int argc, char** argv)
 
     gLogger.reportTestStart(sampleTest);
 
-    samplesCommon::CaffeSampleParams params = initializeSampleParams(args);
-    SampleGoogleNet sample(params);
+    dtrCommon::CaffeNNParams params = initializeNNParams(args);
+    CaffeGoogleNet sample(params);
 
     gLogInfo << "Building and running a GPU inference engine for GoogleNet" << std::endl;
 
