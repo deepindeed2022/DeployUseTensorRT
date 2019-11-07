@@ -36,7 +36,7 @@ SET(TENSORRT_LIBRARY_PATH ${TENSORRT_ROOT_DIR}/lib)
 
 INCLUDE_DIRECTORIES(
     ${DEPS_LIB_DIR}/tensorrt5.1.2/include
-	${DEPS_LIB_DIR}/cudnn${USE_CUDA_VERSION}/include
+	${DEPS_LIB_DIR}/cudnn${USE_CUDNN_VERSION}/include
 	${DEPS_LIB_DIR}/cuda${USE_CUDA_VERSION}/include
 )
 

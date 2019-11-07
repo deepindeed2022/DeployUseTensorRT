@@ -2,5 +2,7 @@ build/*
 deps/*
 ignore/*
 data/*/*.caffemodel
+data/*/*/*/*/*.caffemodel
 data/*/*.tgz
 data/*/*.tar.gz
+data/mnist

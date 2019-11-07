@@ -36,3 +36,10 @@ deps
 - model load sample
   - caffe model
   - gie model
+
+## Model Zoo
+
+- [SqueezeNet](https://github.com/DeepScale/SqueezeNet)
+- [Sequence to Sequence -- Video to Text]()
+- [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/models/getModels.sh)
+   https://github.com/CMU-Perceptual-Computing-Lab/openpose
