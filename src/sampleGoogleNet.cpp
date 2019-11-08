@@ -38,7 +38,7 @@ const std::string gSampleName = "TensorRT.sample_googlenet";
 //!
 //! \details It creates the network using a caffe model
 //!
-class CaffeGoogleNet : ICaffeBaseModel
+class CaffeGoogleNet : IBaseModel
 {
     template <typename T>
     using SampleUniquePtr = std::unique_ptr<T, dtrCommon::DtrInferDeleter>;
@@ -127,7 +127,7 @@ void CaffeGoogleNet::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& build
 
     builder->setMaxBatchSize(mParams.batchSize);
     builder->setMaxWorkspaceSize(16_MB);
-    dtrCommon::enableDLA(builder.get(), mParams.dlaCore);
+    dtrCommon::enableDLA(builder.get(), mParams.useDLACore);
 }
 
 //!
@@ -191,7 +191,7 @@ dtrCommon::CaffeNNParams initializeNNParams(const dtrCommon::Args& args)
     params.inputTensorNames.push_back("data");
     params.batchSize = 4;
     params.outputTensorNames.push_back("prob");
-    params.dlaCore = args.useDLACore;
+    params.useDLACore = args.useDLACore;
 
     return params;
 }

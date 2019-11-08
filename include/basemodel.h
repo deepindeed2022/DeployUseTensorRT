@@ -14,7 +14,7 @@
 #include <iostream>
 #include <sstream>
 
-class ICaffeBaseModel {
+class IBaseModel {
 public:
     //!
     //! \brief Function builds the network engine
