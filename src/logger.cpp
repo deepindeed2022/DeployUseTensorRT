@@ -1,5 +1,5 @@
-#include "logger.h"
-#include "logging.h"
+#include "common/logger.h"
+#include "common/logging.h"
 
 //! Decouple default reportability level for sample and TRT-API specific logging.
 //! This change is required to not log TRT-API specific info by default.

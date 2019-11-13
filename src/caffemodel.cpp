@@ -1,53 +1,4 @@
-#include <algorithm>
-#include <chrono>
-#include <cmath>
-#include <cuda_runtime_api.h>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <random>
-#include <sstream>
-#include <string.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <vector>
-#include <NvCaffeParser.h>
-#include <NvInfer.h>
-#include <NvInferPlugin.h>
-
-#include <buffers.h>
-#include <common.h>
-#include <logger.h>
-#include <argsParser.h>
-#include <basemodel.h>
-
-using namespace nvinfer1;
-using namespace nvcaffeparser1;
-
-typedef enum nn_model_t {
-	DTR_CAFFE = (0x1 << 0),
-	DTR_GIE = (0x1 << 1),
-} nn_model_t;
-
-class CaffeModel : public IBaseModel {
-	template <typename T>
-	using UniquePtr = std::unique_ptr<T, dtrCommon::DtrInferDeleter>;
-
-public:
-	CaffeModel(const dtrCommon::CaffeNNParams& params)
-		: mParams(params), gInputDimensions({})
-	{ }
-	bool build();
-	bool infer();
-	bool teardown();
-	dtrCommon::CaffeNNParams mParams;
-private:
-	std::map<std::string, Dims3> gInputDimensions;
-	std::shared_ptr<nvinfer1::ICudaEngine> mEngine = nullptr; //!< The TensorRT engine used to run the network
-	void constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, UniquePtr<nvinfer1::INetworkDefinition>& network, UniquePtr<nvcaffeparser1::ICaffeParser>& parser);
-};
+#include <caffemodel.h>
 
 bool CaffeModel::build() {
 	auto builder = UniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
@@ -368,40 +319,40 @@ bool CaffeModel::teardown() {
 //     }
 // }
 
-dtrCommon::CaffeNNParams initializeNNParams()
-{
-    dtrCommon::CaffeNNParams params;
-    params.dataDirs.push_back("data/googlenet/");
-    params.prototxtFileName = "googlenet.prototxt";
-    params.weightsFileName = "googlenet.caffemodel";
-    params.inputTensorNames.push_back("data");
-    params.batchSize = 4;
-    params.outputTensorNames.push_back("prob");
-    params.useDLACore = -1;
-    return params;
-}
+// dtrCommon::CaffeNNParams initializeNNParams()
+// {
+//     dtrCommon::CaffeNNParams params;
+//     params.dataDirs.push_back("data/googlenet/");
+//     params.prototxtFileName = "googlenet.prototxt";
+//     params.weightsFileName = "googlenet.caffemodel";
+//     params.inputTensorNames.push_back("data");
+//     params.batchSize = 4;
+//     params.outputTensorNames.push_back("prob");
+//     params.useDLACore = -1;
+//     return params;
+// }
 
-int main(int argc, char** argv) {
-	cudaSetDevice(0);
-	initLibNvInferPlugins(&gLogger.getTRTLogger(), "");
-    dtrCommon::CaffeNNParams params = initializeNNParams();
-    CaffeModel sample(params);
-   	sample.build();
-    sample.infer();
-    sample.teardown();
-    std::stringstream ss;
+// int main(int argc, char** argv) {
+// 	cudaSetDevice(0);
+// 	initLibNvInferPlugins(&gLogger.getTRTLogger(), "");
+//     dtrCommon::CaffeNNParams params = initializeNNParams();
+//     CaffeModel sample(params);
+//    	sample.build();
+//     sample.infer();
+//     sample.teardown();
+//     std::stringstream ss;
 
-    ss << "Input(s): ";
-    for (auto& input : sample.mParams.inputTensorNames)
-        ss << input << " ";
-    gLogInfo << ss.str() << std::endl;
+//     ss << "Input(s): ";
+//     for (auto& input : sample.mParams.inputTensorNames)
+//         ss << input << " ";
+//     gLogInfo << ss.str() << std::endl;
 
-    ss.str(std::string());
+//     ss.str(std::string());
 
-    ss << "Output(s): ";
-    for (auto& output : sample.mParams.outputTensorNames)
-        ss << output << " ";
-    gLogInfo << ss.str() << std::endl;
+//     ss << "Output(s): ";
+//     for (auto& output : sample.mParams.outputTensorNames)
+//         ss << output << " ";
+//     gLogInfo << ss.str() << std::endl;
 
-	return 0;
-}
+// 	return 0;
+// }

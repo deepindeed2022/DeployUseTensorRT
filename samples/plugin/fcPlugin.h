@@ -29,7 +29,7 @@
 #include <time.h>
 
 #include "NvInfer.h"
-#include "common.h"
+#include "common/common.h"
 #include "fp16.h"
 
 class FCPlugin : public nvinfer1::IPluginExt {

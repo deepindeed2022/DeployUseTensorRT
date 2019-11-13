@@ -17,9 +17,9 @@
 #include "NvCaffeParser.h"
 #include "fcPlugin.h"
 #include "fp16.h"
-#include "logger.h"
-#include "common.h"
-#include "argsParser.h"
+#include "common/logger.h"
+#include "common/common.h"
+#include "common/argsParser.h"
 
 using namespace nvinfer1;
 using namespace nvcaffeparser1;

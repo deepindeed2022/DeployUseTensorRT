@@ -20,9 +20,9 @@
 #include "NvInferPlugin.h"
 #include "NvUffParser.h"
 
-#include "buffers.h"
-#include "common.h"
-#include "logger.h"
+#include "common/buffers.h"
+#include "common/common.h"
+#include "common/logger.h"
 
 
 using namespace nvinfer1;

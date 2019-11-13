@@ -17,10 +17,10 @@
     Concat
 all the layer have supported in TensorRT libs
 **/
-#include "argsParser.h"
-#include "buffers.h"
-#include "logger.h"
-#include "common.h"
+#include "common/argsParser.h"
+#include "common/buffers.h"
+#include "common/logger.h"
+#include "common/common.h"
 
 #include "NvCaffeParser.h"
 #include "NvInfer.h"

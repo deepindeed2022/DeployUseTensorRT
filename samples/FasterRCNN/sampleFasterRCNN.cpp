@@ -12,9 +12,9 @@
 
 #include "NvCaffeParser.h"
 #include "NvInferPlugin.h"
-#include "common.h"
-#include "logger.h"
-#include "argsParser.h"
+#include "common/common.h"
+#include "common/logger.h"
+#include "common/argsParser.h"
 
 
 static dtrCommon::Args gArgs;

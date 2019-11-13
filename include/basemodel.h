@@ -1,9 +1,9 @@
 #ifndef DEPLOY_BASE_MODEL_H_
 #define DEPLOY_BASE_MODEL_H_
-#include "argsParser.h"
-#include "buffers.h"
-#include "logger.h"
-#include "common.h"
+#include "common/argsParser.h"
+#include "common/buffers.h"
+#include "common/logger.h"
+#include "common/common.h"
 
 #include "NvCaffeParser.h"
 #include "NvInfer.h"
