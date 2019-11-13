@@ -5,17 +5,18 @@ set(USE_CUDA_VERSION 9.0)
 set(USE_CUDNN_VERSION 7.5)
 
 set(DEPS_LIB_DIR ${PROJECT_SOURCE_DIR}/deps)
+set(BUILD_TEST TRUE)
 
 IF (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    IF (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-        SET(NEWCXX_ENABLED_FLAG "-std=c++11 -stdlib=libc++ -Wall -O2")
-    ELSE()
-        SET(NEWCXX_ENABLED_FLAG "-std=c++11 -Wall -Wno-mismatched-tags -O2")
-    ENDIF()
+	IF (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+		SET(NEWCXX_ENABLED_FLAG "-std=c++11 -stdlib=libc++ -Wall -O2")
+	ELSE()
+		SET(NEWCXX_ENABLED_FLAG "-std=c++11 -Wall -Wno-mismatched-tags -O2")
+	ENDIF()
 ELSEIF (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    SET(NEWCXX_ENABLED_FLAG "-std=c++11 -Wall")
+	SET(NEWCXX_ENABLED_FLAG "-std=c++11 -Wall")
 ELSE()
-    MESSAGE(FATAL_ERROR, "Only GCC and clang is supported for now.")
+	MESSAGE(FATAL_ERROR, "Only GCC and clang is supported for now.")
 ENDIF()
 
 SET(CMAKE_CXX_FLAGS ${NEWCXX_ENABLED_FLAG})
@@ -35,7 +36,7 @@ SET(TENSORRT_INCLUDE_DIR ${TENSORRT_ROOT_DIR}/include)
 SET(TENSORRT_LIBRARY_PATH ${TENSORRT_ROOT_DIR}/lib)
 
 INCLUDE_DIRECTORIES(
-    ${DEPS_LIB_DIR}/tensorrt5.1.2/include
+	${DEPS_LIB_DIR}/tensorrt5.1.2/include
 	${DEPS_LIB_DIR}/cudnn${USE_CUDNN_VERSION}/include
 	${DEPS_LIB_DIR}/cuda${USE_CUDA_VERSION}/include
 )
@@ -43,17 +44,37 @@ INCLUDE_DIRECTORIES(
 INCLUDE_DIRECTORIES(include)
 file(GLOB_RECURSE CPP_SRC_LIST ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 foreach(FILE_PATH ${CPP_SRC_LIST})
-    STRING(REGEX REPLACE ".+/(.+)\\..*" "\\1" FILE_NAME ${FILE_PATH})
-    add_executable(${FILE_NAME} ${FILE_PATH} include/logger.cpp)
-    TARGET_LINK_LIBRARIES(${FILE_NAME} PUBLIC
-        ${TENSORRT_LIBRARY_PATH}/libnvinfer.so
-        ${TENSORRT_LIBRARY_PATH}/libnvinfer_plugin.so
-        ${TENSORRT_LIBRARY_PATH}/libnvcaffe_parser.so
-        ${TENSORRT_LIBRARY_PATH}/libnvonnxparser.so
-        ${CUDA_LIBRARY_PATH}/libcublas.so
-        ${CUDA_LIBRARY_PATH}/libcudart.so
-        ${CUDA_LIBRARY_PATH}/libnvblas.so
-        ${CUDA_LIBRARY_PATH}/libnvrtc.so
-        ${CUDNN_LIBRARY_PATH}/libcudnn.so
-    )
+	STRING(REGEX REPLACE ".+/(.+)\\..*" "\\1" FILE_NAME ${FILE_PATH})
+	add_executable(${FILE_NAME} ${FILE_PATH} include/logger.cpp)
+	TARGET_LINK_LIBRARIES(${FILE_NAME} PUBLIC
+		${TENSORRT_LIBRARY_PATH}/libnvinfer.so
+		${TENSORRT_LIBRARY_PATH}/libnvinfer_plugin.so
+		${TENSORRT_LIBRARY_PATH}/libnvcaffe_parser.so
+		${TENSORRT_LIBRARY_PATH}/libnvonnxparser.so
+		${CUDA_LIBRARY_PATH}/libcublas.so
+		${CUDA_LIBRARY_PATH}/libcudart.so
+		${CUDA_LIBRARY_PATH}/libnvblas.so
+		${CUDA_LIBRARY_PATH}/libnvrtc.so
+		${CUDNN_LIBRARY_PATH}/libcudnn.so
+	)
 endforeach()
+
+IF(BUILD_TEST)
+	# download gtest
+	IF(NOT DEFINED GTEST_DIR)
+		MESSAGE(STATUS "Downloading Google Test to ${CMAKE_SOURCE_DIR}/deps/gtest (define GTEST_DIR to avoid it)")
+		CONFIGURE_FILE(cmake/DownloadGoogleTest.cmake "${CMAKE_SOURCE_DIR}/deps/gtest/CMakeLists.txt")
+		EXECUTE_PROCESS(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
+			WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/deps/gtest/googletest")
+
+		EXECUTE_PROCESS(COMMAND "${CMAKE_COMMAND}" --build .
+			WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/deps/gtest/googletest")
+
+		SET(GTEST_DIR "${CMAKE_SOURCE_DIR}/deps/gtest/googletest")
+	ENDIF()
+
+	FILE(GLOB_RECURSE TEST_SRC test/*.cpp)
+	ADD_EXECUTABLE(test_deplytrt ${TEST_SRC})
+	TARGET_INCLUDE_DIRECTORIES(test_deplytrt PUBLIC ${GTEST_DIR}/include ${CMAKE_SOURCE_DIR}/test)
+	TARGET_LINK_LIBRARIES(test_deplytrt PUBLIC ${GTEST_DIR}/libgtest.a pthread)
+ENDIF()

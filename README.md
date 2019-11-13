@@ -30,7 +30,8 @@ deps
 - [INT8量化校准原理](https://arleyzhang.github.io/articles/923e2c40/)
 
 ## TODO SCHEDULE
-
+- add test support  [`done`]
+- export a static lib [`doing`]
 - plugin & extend layers
 
 - model load sample
