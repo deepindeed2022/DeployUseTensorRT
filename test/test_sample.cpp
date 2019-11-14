@@ -1,4 +1,4 @@
-#include <caffemodel.h>
+#include <CaffeModel.h>
 #include <gtest/gtest.h>
 
 dtrCommon::CaffeNNParams initializeNNParams() {

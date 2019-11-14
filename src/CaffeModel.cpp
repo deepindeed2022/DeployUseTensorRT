@@ -1,4 +1,4 @@
-#include <caffemodel.h>
+#include <CaffeModel.h>
 
 bool CaffeModel::build() {
 	auto builder = UniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
