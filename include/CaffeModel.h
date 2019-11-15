@@ -11,7 +11,8 @@
 #include <common/common.h>
 #include <common/logger.h>
 #include <common/argsParser.h>
-#include <basemodel.h>
+#include <BaseModel.h>
+#include <DataBlob.h>
 
 typedef enum nn_model_t {
 	DTR_CAFFE = (0x1 << 0),
@@ -27,7 +28,7 @@ public:
 		: mParams(params), gInputDimensions({})
 	{ }
 	bool build();
-	bool infer();
+	std::vector<DataBlob32f> infer(const std::vector<DataBlob32f>& input_blobs);
 	bool teardown();
 	dtrCommon::CaffeNNParams mParams;
 private:

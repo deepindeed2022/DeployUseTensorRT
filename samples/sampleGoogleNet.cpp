@@ -30,7 +30,7 @@ all the layer have supported in TensorRT libs
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include "basemodel.h"
+#include "BaseModel.h"
 const std::string gSampleName = "TensorRT.sample_googlenet";
 
 //!
@@ -57,7 +57,7 @@ public:
     //!
     //! \brief This function runs the TensorRT inference engine for this sample
     //!
-    bool infer();
+    std::vector<DataBlob32f> infer(const std::vector<DataBlob32f>& input_blobs);
 
     //!
     //! \brief This function can be used to clean up any state created in the sample class
@@ -136,14 +136,14 @@ void CaffeGoogleNet::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& build
 //! \details This function is the main execution function of the sample. It allocates the buffer,
 //!          sets inputs and executes the engine.
 //!
-bool CaffeGoogleNet::infer()
+std::vector<DataBlob32f> CaffeGoogleNet::infer(const std::vector<DataBlob32f>& input_blobs)
 {
     // Create RAII buffer manager object
     dtrCommon::BufferManager buffers(mEngine, mParams.batchSize);
 
     auto context = SampleUniquePtr<nvinfer1::IExecutionContext>(mEngine->createExecutionContext());
     if (!context)
-        return false;
+        return {};
 
     // Fetch host buffers and set host input buffers to all zeros
     for (auto& input : mParams.inputTensorNames)
@@ -154,12 +154,12 @@ bool CaffeGoogleNet::infer()
 
     bool status = context->execute(mParams.batchSize, buffers.getDeviceBindings().data());
     if (!status)
-        return false;
+        return {};
 
     // Memcpy from device output buffers to host output buffers
     buffers.copyOutputToHost();
 
-    return true;
+    return {};
 }
 
 //!
@@ -208,6 +208,8 @@ void printHelpInfo()
 
 int main(int argc, char** argv)
 {
+    setReportableSeverity(Logger::Severity::kINFO);
+    initLibNvInferPlugins(&gLogger.getTRTLogger(), "");
     dtrCommon::Args args;
     bool argsOK = dtrCommon::parseArgs(args, argc, argv);
     if (args.help) {
@@ -232,9 +234,7 @@ int main(int argc, char** argv)
     if (!sample.build()) {
         return gLogger.reportFail(sampleTest);
     }
-    if (!sample.infer()) {
-        return gLogger.reportFail(sampleTest);
-    }
+    sample.infer({});
     if (!sample.teardown()) {
         return gLogger.reportFail(sampleTest);
     }

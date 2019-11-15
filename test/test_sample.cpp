@@ -19,7 +19,7 @@ TEST(Init, CaffeModel) {
     dtrCommon::CaffeNNParams params = initializeNNParams();
     CaffeModel sample(params);
    	sample.build();
-    sample.infer();
+    sample.infer({});
     sample.teardown();
     // std::stringstream ss;
     // ss << "Input(s): ";

@@ -1,4 +1,5 @@
 #include <CaffeModel.h>
+#include <common/common.h>
 
 bool CaffeModel::build() {
 	auto builder = UniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
@@ -84,17 +85,20 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
 // 	return engine;
 // }
 
-bool CaffeModel::infer() {
+std::vector<DataBlob32f> CaffeModel::infer(const std::vector<DataBlob32f>& input_blobs) {
 	// Create RAII buffer manager object
 	dtrCommon::BufferManager buffers(mEngine, mParams.batchSize);
 	auto context = UniquePtr<nvinfer1::IExecutionContext>(mEngine->createExecutionContext());
-	if (!context) return false;
+	if (!context) return {};
 
 	// Fetch host buffers and set host input buffers to all zeros
-	for (auto& input : mParams.inputTensorNames)
-		memset(buffers.getHostBuffer(input), 0, buffers.size(input));
-
-	// Memcpy from host input buffers to device input buffers
+	CHECK(mParams.inputTensorNames.size() == input_blobs.size());
+	for (size_t i = 0; i < mParams.inputTensorNames.size(); ++i) {
+		std::string input = mParams.inputTensorNames[i];
+		size_t size = sizeof(float)*input_blobs[i].total_nr_elem()*input_blobs[i].channels();
+		CHECK(buffers.size(input) == size);
+		memcpy(buffers.getHostBuffer(input), input_blobs[i].ptr(), size);
+	}
 	buffers.copyInputToDevice();
 
 	cudaStream_t stream;
@@ -102,7 +106,7 @@ bool CaffeModel::infer() {
 
 	// bool status = context->execute(mParams.batchSize, buffers.getDeviceBindings().data());
 	bool status = context->enqueue(mParams.batchSize, buffers.getDeviceBindings().data(), stream, nullptr);
-	if (!status) return false;
+	if (!status) return {};
 	buffers.copyOutputToHost();
 	int nbBindings = mEngine->getNbBindings();
 	for (int i = 0; i < nbBindings; i++) {
@@ -113,7 +117,7 @@ bool CaffeModel::infer() {
 		}
 	}
 	cudaStreamDestroy(stream);
-	return true;
+	return {};
 }
 
 bool CaffeModel::teardown() {
