@@ -1,5 +1,6 @@
 #include <CaffeModel.h>
 #include <common/common.h>
+#include <cstring>
 
 bool CaffeModel::build() {
 	auto builder = UniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
@@ -85,17 +86,71 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
 // 	return engine;
 // }
 
+DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, std::string& tensorname) {
+	int index = mEngine->getBindingIndex(tensorname.c_str());
+	nvinfer1::Dims bufDims = mEngine->getBindingDimensions(index);
+	DataBlob32f res(bufDims.d[0],bufDims.d[1],bufDims.d[2],bufDims.d[3]);
+	size_t inst_size = res.inst_n_elem();
+
+	nvinfer1::DataType data_type = mEngine->getBindingDataType(index);
+	void* buf = buffers.getHostBuffer(tensorname);
+	size_t bufSize = buffers.size(tensorname);
+	if(nvinfer1::DataType::kFLOAT == data_type) {
+		std::cout << "float" << std::endl;
+		CHECK(bufSize == res.nums()*inst_size);
+		float* typebuf = static_cast<float*>(buf);
+		for(size_t i = 0; i < res.nums(); ++i) {
+			float* dst = res.ptr(i);
+			for(size_t j = 0; j < inst_size; ++j) {
+				dst[j] = typebuf[j];
+			}
+			typebuf += inst_size;
+		}
+	} else if(nvinfer1::DataType::kHALF == data_type){
+		std::cout << "half" << std::endl;
+		half_float::half* half_typebuf = static_cast<half_float::half*>(buf);
+		for(size_t i = 0; i < res.nums(); ++i) {
+			float* dst = res.ptr(i);
+			for(size_t j = 0; j < inst_size; ++j) {
+				dst[j] = (float)(half_typebuf[j]);
+			}
+			half_typebuf += inst_size;
+		}
+	} else if(data_type == nvinfer1::DataType::kINT8) {
+		std::cout << "int8" << std::endl;
+		char* c_typebuf = static_cast<char*>(buf);
+		for(size_t i = 0; i < res.nums(); ++i) {
+			float* dst = res.ptr(i);
+			for(size_t j = 0; j < inst_size; ++j) {
+				dst[j] = static_cast<float>(c_typebuf[j]);
+			}
+			c_typebuf += inst_size;
+		}
+	} else if(data_type == nvinfer1::DataType::kINT32) {
+		std::cout << "int32" << std::endl;
+		int* i_typebuf = static_cast<int*>(buf);
+		for(size_t i = 0; i < res.nums(); ++i) {
+			float* dst = res.ptr(i);
+			for(size_t j = 0; j < inst_size; ++j) {
+				dst[j] = static_cast<float>(i_typebuf[j]);
+			}
+			i_typebuf += inst_size;
+		}
+	} else {
+		std::cout << "not support type" << std::endl;
+	}
+	return std::move(res);
+}
+
 std::vector<DataBlob32f> CaffeModel::infer(const std::vector<DataBlob32f>& input_blobs) {
 	// Create RAII buffer manager object
 	dtrCommon::BufferManager buffers(mEngine, mParams.batchSize);
 	auto context = UniquePtr<nvinfer1::IExecutionContext>(mEngine->createExecutionContext());
 	if (!context) return {};
-
-	// Fetch host buffers and set host input buffers to all zeros
 	CHECK(mParams.inputTensorNames.size() == input_blobs.size());
 	for (size_t i = 0; i < mParams.inputTensorNames.size(); ++i) {
 		std::string input = mParams.inputTensorNames[i];
-		size_t size = sizeof(float)*input_blobs[i].total_nr_elem()*input_blobs[i].channels();
+		size_t size = sizeof(float)*input_blobs[i].total_n_elem();
 		CHECK(buffers.size(input) == size);
 		memcpy(buffers.getHostBuffer(input), input_blobs[i].ptr(), size);
 	}
@@ -108,16 +163,12 @@ std::vector<DataBlob32f> CaffeModel::infer(const std::vector<DataBlob32f>& input
 	bool status = context->enqueue(mParams.batchSize, buffers.getDeviceBindings().data(), stream, nullptr);
 	if (!status) return {};
 	buffers.copyOutputToHost();
-	int nbBindings = mEngine->getNbBindings();
-	for (int i = 0; i < nbBindings; i++) {
-		if (!mEngine->bindingIsInput(i)) {
-			const char* tensorName = mEngine->getBindingName(i);
-			gLogInfo << "Dumping output tensor " << tensorName << ":" << std::endl;
-			buffers.dumpBuffer(gLogInfo, tensorName);
-		}
+	std:vector<DataBlob32f> results;
+	for(auto& tensorName: mParams.outputTensorNames) {
+		results.push_back(getDatBlobFromBuffer(buffers, tensorName));
 	}
 	cudaStreamDestroy(stream);
-	return {};
+	return results;
 }
 
 bool CaffeModel::teardown() {

@@ -32,6 +32,7 @@ public:
 	bool teardown();
 	dtrCommon::CaffeNNParams mParams;
 private:
+	DataBlob32f getDatBlobFromBuffer(dtrCommon::BufferManager & buffer, std::string& tensorname);
 	std::map<std::string, Dims3> gInputDimensions;
 	std::shared_ptr<nvinfer1::ICudaEngine> mEngine = nullptr; //!< The TensorRT engine used to run the network
 	void constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, UniquePtr<nvinfer1::INetworkDefinition>& network, UniquePtr<nvcaffeparser1::ICaffeParser>& parser);
