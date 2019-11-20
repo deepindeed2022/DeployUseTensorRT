@@ -4,6 +4,17 @@
 bool CaffeModel::build() {
 	return this->build(false);
 }
+CaffeModel::shape_t CaffeModel::getInputDimension(int index) {
+	if(mEngine != nullptr) {
+		std::string layername = mParams.inputTensorNames[index];
+		if(gInputDimensions.find(layername)!= gInputDimensions.end()) {
+			return gInputDimensions[layername];
+		} else {
+			gLogError << "Only init from prototxt and caffemodel could call CaffeModel::InputDimension\n";
+		}
+	}
+	return {};
+}
 
 bool CaffeModel::build(bool is_caffe) {
 	if(is_caffe) {
@@ -71,7 +82,7 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
 	for (int i = 0, n = network->getNbInputs(); i < n; i++) {
 		Dims3 dims = static_cast<Dims3&&>(network->getInput(i)->getDimensions());
 		if(parseInput) mParams.inputTensorNames.push_back(network->getInput(i)->getName());
-		gInputDimensions.insert(std::make_pair(network->getInput(i)->getName(), dims));
+		gInputDimensions.insert(std::make_pair(network->getInput(i)->getName(), convertToShape(dims)));
 	}
 
 	// specify which tensors are outputs
@@ -191,239 +202,3 @@ bool CaffeModel::teardown() {
 	nvcaffeparser1::shutdownProtobufLibrary();
 	return true;
 }
-
-
-
-// std::map<std::string, Dims3> gInputDimensions;
-// ICudaEngine* createEngineFromCaffeModel(dtrCommon::CaffeNNParams& gParams) {
-//     // create the builder
-//     IBuilder* builder = createInferBuilder(gLogger.getTRTLogger());
-//     if (builder == nullptr) {
-//         return nullptr;
-//     }
-
-//     // parse the caffe model to populate the network, then set the outputs
-//     INetworkDefinition* network = builder->createNetwork();
-//     ICaffeParser* parser = createCaffeParser();
-//     const IBlobNameToTensor* blobNameToTensor = parser->parse(gParams.prototxtFileName.c_str(),
-//                                                               gParams.weightsFileName.c_str(),
-//                                                               *network,
-//                                                               DataType::kFLOAT);
-
-//     if (!blobNameToTensor) {
-//         return nullptr;
-//     }
-
-//     for (int i = 0, n = network->getNbInputs(); i < n; i++) {
-//         Dims3 dims = static_cast<Dims3&&>(network->getInput(i)->getDimensions());
-//         gParams.inputTensorNames.push_back(network->getInput(i)->getName());
-//         gInputDimensions.insert(std::make_pair(network->getInput(i)->getName(), dims));
-//         gLogInfo << "Input \"" << network->getInput(i)->getName() << "\": " << dims.d[0] << "x" << dims.d[1] << "x" << dims.d[2] << std::endl;
-//     }
-
-//     // specify which tensors are outputs
-//     for (auto& s : gParams.outputTensorNames) {
-//         if (blobNameToTensor->find(s.c_str()) == nullptr) {
-//             gLogError << "could not find output blob " << s << std::endl;
-//             return nullptr;
-//         }
-//         network->markOutput(*blobNameToTensor->find(s.c_str()));
-//     }
-
-//     for (int i = 0, n = network->getNbOutputs(); i < n; i++) {
-//         Dims3 dims = static_cast<Dims3&&>(network->getOutput(i)->getDimensions());
-//         gLogInfo << "Output \"" << network->getOutput(i)->getName() << "\": " << dims.d[0] << "x" << dims.d[1] << "x"
-//                  << dims.d[2] << std::endl;
-//     }
-
-//     // configure the builder
-//     dtrCommon::enableDLA(builder, gParams.useDLACore);
-//     builder->setMaxBatchSize(gParams.batchSize);
-//     builder->setMaxWorkspaceSize(gParams.maxWorkSpaceSize);
-//     builder->setFp16Mode(gParams.fp16);
-//     builder->setInt8Mode(gParams.int8);
-	
-//     // builder->setInt8Calibrator(&calibrator);
-
-//     ICudaEngine* engine = builder->buildCudaEngine(*network);
-//     if (engine == nullptr) {
-//         gLogError << "could not build engine" << std::endl;
-//     }
-//     parser->destroy();
-//     network->destroy();
-//     builder->destroy();
-//     if (!gParams.saveEngine.empty()) {
-//         std::ofstream p(gParams.saveEngine, std::ios::binary);
-//         if (!p) {
-//             gLogError << "could not open plan output file" << std::endl;
-//             return nullptr;
-//         }
-//         IHostMemory* ptr = engine->serialize();
-//         if (ptr == nullptr) {
-//             gLogError << "could not serialize engine." << std::endl;
-//             return nullptr;
-//         }
-//         p.write(reinterpret_cast<const char*>(ptr->data()), ptr->size());
-//         ptr->destroy();
-//         gLogInfo << "Engine has been successfully saved to " << gParams.saveEngine << std::endl;
-//     }
-//     return engine;
-// }
-
-// inline int volume(Dims dims) {
-//     return std::accumulate(dims.d, dims.d + dims.nbDims, 1, std::multiplies<int>());
-// }
-
-// std::vector<std::string> split(const std::string& s, char delim) {
-//     std::vector<std::string> res;
-//     std::stringstream ss;
-//     ss.str(s);
-//     std::string item;
-//     while (std::getline(ss, item, delim)) {
-//         res.push_back(item);
-//     }
-//     return res;
-// }
-
-// float percentile(float percentage, std::vector<float>& times) {
-//     int all = static_cast<int>(times.size());
-//     int exclude = static_cast<int>((1 - percentage / 100) * all);
-//     if (0 <= exclude && exclude <= all)
-//     {
-//         std::sort(times.begin(), times.end());
-//         return times[all == exclude ? 0 : all - 1 - exclude];
-//     }
-//     return std::numeric_limits<float>::infinity();
-// }
-
-// void infer(ICudaEngine& engine, dtrCommon::NNParams& gParams) {
-//     IExecutionContext* context = engine.createExecutionContext();
-
-//     // Use an aliasing shared_ptr since we don't want engine to be deleted when bufferManager goes out of scope.
-//     std::shared_ptr<ICudaEngine> emptyPtr{};
-//     std::shared_ptr<ICudaEngine> aliasPtr(emptyPtr, &engine);
-//     dtrCommon::BufferManager bufferManager(aliasPtr, gParams.batchSize);
-//     std::vector<void*> buffers = bufferManager.getDeviceBindings();
-
-//     cudaStream_t stream;
-//     CHECK(cudaStreamCreate(&stream));
-//     cudaEvent_t start, end;
-//     unsigned int cudaEventFlags = gParams.useSpinWait ? cudaEventDefault : cudaEventBlockingSync;
-//     CHECK(cudaEventCreateWithFlags(&start, cudaEventFlags));
-//     CHECK(cudaEventCreateWithFlags(&end, cudaEventFlags));
-
-//     auto tStart = std::chrono::high_resolution_clock::now();
-//     cudaEventRecord(start, stream);
-	
-//     context->enqueue(gParams.batchSize, &buffers[0], stream, nullptr);
-
-//     cudaEventRecord(end, stream);
-//     cudaEventSynchronize(end);
-
-//     auto tEnd = std::chrono::high_resolution_clock::now();
-//     gLogInfo << "CPU time:" << std::chrono::duration<float, std::milli>(tEnd - tStart).count() << std::endl;
-//     float ms;
-//     cudaEventElapsedTime(&ms, start, end);
-//     gLogInfo << "GPU time:"<< ms << std::endl;
-//     cudaEventDestroy(start);
-//     cudaEventDestroy(end);
-
-//     // dump output data to cpu
-//     bufferManager.copyOutputToHost();
-//     int nbBindings = engine.getNbBindings();
-//     for (int i = 0; i < nbBindings; i++) {
-//         if (!engine.bindingIsInput(i)) {
-//             const char* tensorName = engine.getBindingName(i);
-//             gLogInfo << "Dumping output tensor " << tensorName << ":" << std::endl;
-//             bufferManager.dumpBuffer(gLogInfo, tensorName);
-//         }
-//     }
-
-//     cudaStreamDestroy(stream);
-//     context->destroy();
-// }
-
-// namespace dtrParserArgs {
-//     bool parseString(const char* arg, const char* name, std::string& value) {
-//         size_t n = strlen(name);
-//         bool match = arg[0] == '-' && arg[1] == '-' && !strncmp(arg + 2, name, n) && arg[n + 2] == '=';
-//         if (match) {
-//             value = arg + n + 3;
-//         }
-//         return match;
-//     }
-
-//     template<typename T>
-//     bool parseAtoi(const char* arg, const char* name, T& value)
-//     {
-//         size_t n = strlen(name);
-//         bool match = arg[0] == '-' && arg[1] == '-' && !strncmp(arg + 2, name, n) && arg[n + 2] == '=';
-//         if (match) {
-//             value = static_cast<T>(atoi(arg + n + 3));
-//         }
-//         return match;
-//     }
-
-//     bool parseInt(const char* arg, const char* name, int& value) {
-//         return parseAtoi<int>(arg, name, value);
-//     }
-
-//     bool parseUnsigned(const char* arg, const char* name, unsigned int& value) {
-//         return parseAtoi<unsigned int>(arg, name, value);
-//     }
-
-//     bool parseBool(const char* arg, const char* name, bool& value, char letter = '\0') {
-//         bool match = arg[0] == '-' && ((arg[1] == '-' && !strcmp(arg + 2, name)) || (letter && arg[1] == letter && !arg[2]));
-//         if (match) {
-//             value = true;
-//         }
-//         return match;
-//     }
-
-//     bool parseFloat(const char* arg, const char* name, float& value) {
-//         size_t n = strlen(name);
-//         bool match = arg[0] == '-' && arg[1] == '-' && !strncmp(arg + 2, name, n) && arg[n + 2] == '=';
-//         if (match) {
-//             value = atof(arg + n + 3);
-//         }
-//         return match;
-//     }
-// }
-
-// dtrCommon::CaffeNNParams initializeNNParams()
-// {
-//     dtrCommon::CaffeNNParams params;
-//     params.dataDirs.push_back("data/googlenet/");
-//     params.prototxtFileName = "googlenet.prototxt";
-//     params.weightsFileName = "googlenet.caffemodel";
-//     params.inputTensorNames.push_back("data");
-//     params.batchSize = 4;
-//     params.outputTensorNames.push_back("prob");
-//     params.useDLACore = -1;
-//     return params;
-// }
-
-// int main(int argc, char** argv) {
-// 	cudaSetDevice(0);
-// 	initLibNvInferPlugins(&gLogger.getTRTLogger(), "");
-//     dtrCommon::CaffeNNParams params = initializeNNParams();
-//     CaffeModel sample(params);
-//    	sample.build();
-//     sample.infer();
-//     sample.teardown();
-//     std::stringstream ss;
-
-//     ss << "Input(s): ";
-//     for (auto& input : sample.mParams.inputTensorNames)
-//         ss << input << " ";
-//     gLogInfo << ss.str() << std::endl;
-
-//     ss.str(std::string());
-
-//     ss << "Output(s): ";
-//     for (auto& output : sample.mParams.outputTensorNames)
-//         ss << output << " ";
-//     gLogInfo << ss.str() << std::endl;
-
-// 	return 0;
-// }

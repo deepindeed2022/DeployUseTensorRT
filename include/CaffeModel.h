@@ -24,18 +24,21 @@ class CaffeModel : public IBaseModel {
 	using UniquePtr = std::unique_ptr<T, dtrCommon::DtrInferDeleter>;
 
 public:
+	typedef std::array<int, 4> shape_t;
 	CaffeModel(const dtrCommon::CaffeNNParams& params)
 		: mParams(params), gInputDimensions({})
 	{ }
 	bool build(bool is_caffe); 
 	bool build();
+	shape_t getInputDimension(int index = 0);
 	std::vector<DataBlob32f> infer(const std::vector<DataBlob32f>& input_blobs, bool use_cudastream);
 	std::vector<DataBlob32f> infer(const std::vector<DataBlob32f>& input_blobs);
 	bool teardown();
 	dtrCommon::CaffeNNParams mParams;
 private:
+	shape_t convertToShape(nvinfer1::Dims3& dims) { return {1, dims.d[0], dims.d[1], dims.d[2]};}
 	DataBlob32f getDatBlobFromBuffer(dtrCommon::BufferManager & buffer, std::string& tensorname);
-	std::map<std::string, Dims3> gInputDimensions;
+	std::map<std::string, shape_t> gInputDimensions;
 	std::shared_ptr<nvinfer1::ICudaEngine> mEngine = nullptr; //!< The TensorRT engine used to run the network
 	void constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, UniquePtr<nvinfer1::INetworkDefinition>& network, UniquePtr<nvcaffeparser1::ICaffeParser>& parser);
 };

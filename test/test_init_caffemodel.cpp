@@ -24,15 +24,20 @@ TEST(Init, CaffeModel) {
    	bool status = sample.build(true);
 	auto end = std::chrono::high_resolution_clock::now();
 	fprintf(stderr, "loadmodel time: %ld ms\n", (std::chrono::duration_cast<milliseconds>(end - begin)).count());
-	
+	CaffeModel::shape_t shape = sample.getInputDimension(0);
+	ASSERT_EQ(shape[0], 1);
+	ASSERT_EQ(shape[1], 3);
+	ASSERT_EQ(shape[2], 224);
+	ASSERT_EQ(shape[3], 224);
 	if(status) {
 		DataBlob32f input(1,3,224,224);
 		memset(input.ptr(), 0, input.total_n_elem()*sizeof(float));
 		std::vector<DataBlob32f> inputs{input};
 		std::vector<DataBlob32f> res = sample.infer(inputs);
+		ASSERT_GE(res.size(), 0U);
 		begin = high_resolution_clock::now();
 		for(int i = 0; i < 10; i++) {
-			std::vector<DataBlob32f> res = sample.infer(inputs);
+			res = sample.infer(inputs);
 		}
 		end = high_resolution_clock::now();
 		fprintf(stderr, "infer time: %.2lf ms\n", (std::chrono::duration_cast<milliseconds>(end - begin)).count()/10.0f);
@@ -49,15 +54,15 @@ TEST(Init, GIEModel) {
    	bool status = sample.build(false);
 	auto end = std::chrono::high_resolution_clock::now();
 	fprintf(stderr, "loadmodel time: %ld ms\n", (std::chrono::duration_cast<milliseconds>(end - begin)).count());
-	
 	if(status) {
 		DataBlob32f input(1,3,224,224);
 		memset(input.ptr(), 0, input.total_n_elem()*sizeof(float));
 		std::vector<DataBlob32f> inputs{input};
 		std::vector<DataBlob32f> res = sample.infer(inputs);
 		begin = high_resolution_clock::now();
+		ASSERT_GE(res.size(), 0U);
 		for(int i = 0; i < 10; i++) {
-			std::vector<DataBlob32f> res = sample.infer(inputs);
+			res = sample.infer(inputs, false);
 		}
 		end = high_resolution_clock::now();
 		fprintf(stderr, "infer time: %.2lf ms\n", (std::chrono::duration_cast<milliseconds>(end - begin)).count()/10.0f);
