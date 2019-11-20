@@ -143,7 +143,10 @@ DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, 
 }
 
 std::vector<DataBlob32f> CaffeModel::infer(const std::vector<DataBlob32f>& input_blobs) {
-	// Create RAII buffer manager object
+	return this->infer(input_blobs, true);
+}
+
+std::vector<DataBlob32f> CaffeModel::infer(const std::vector<DataBlob32f>& input_blobs, bool use_cudastream = true) {
 	dtrCommon::BufferManager buffers(mEngine, mParams.batchSize);
 	auto context = UniquePtr<nvinfer1::IExecutionContext>(mEngine->createExecutionContext());
 	if (!context) return {};
@@ -152,22 +155,23 @@ std::vector<DataBlob32f> CaffeModel::infer(const std::vector<DataBlob32f>& input
 		std::string input = mParams.inputTensorNames[i];
 		size_t size = sizeof(float)*input_blobs[i].total_n_elem();
 		CHECK(buffers.size(input) == size);
-		memcpy(buffers.getHostBuffer(input), input_blobs[i].ptr(), size);
+		cudaMemcpy(buffers.getDeviceBuffer(input), (void*)input_blobs[i].ptr(0), size, cudaMemcpyHostToDevice);
 	}
-	buffers.copyInputToDevice();
-
-	cudaStream_t stream;
-	CHECK(cudaStreamCreate(&stream));
-
-	// bool status = context->execute(mParams.batchSize, buffers.getDeviceBindings().data());
-	bool status = context->enqueue(mParams.batchSize, buffers.getDeviceBindings().data(), stream, nullptr);
+	bool status = false;
+	if(use_cudastream) {
+		cudaStream_t stream;
+		CHECK(cudaStreamCreate(&stream));
+		status = context->enqueue(mParams.batchSize, buffers.getDeviceBindings().data(), stream, nullptr);
+		cudaStreamDestroy(stream);
+	} else {
+		status = context->execute(mParams.batchSize, buffers.getDeviceBindings().data());
+	}
 	if (!status) return {};
 	buffers.copyOutputToHost();
-	std:vector<DataBlob32f> results;
+	std::vector<DataBlob32f> results;
 	for(auto& tensorName: mParams.outputTensorNames) {
 		results.push_back(getDatBlobFromBuffer(buffers, tensorName));
 	}
-	cudaStreamDestroy(stream);
 	return results;
 }
 

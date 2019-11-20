@@ -28,6 +28,7 @@ public:
 		: mParams(params), gInputDimensions({})
 	{ }
 	bool build();
+	std::vector<DataBlob32f> infer(const std::vector<DataBlob32f>& input_blobs, bool use_cudastream);
 	std::vector<DataBlob32f> infer(const std::vector<DataBlob32f>& input_blobs);
 	bool teardown();
 	dtrCommon::CaffeNNParams mParams;
