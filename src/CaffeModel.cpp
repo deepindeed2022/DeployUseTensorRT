@@ -1,26 +1,56 @@
 #include <CaffeModel.h>
 #include <common/common.h>
 #include <cstring>
-
 bool CaffeModel::build() {
-	auto builder = UniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
-	if (!builder)
-		return false;
+	return this->build(false);
+}
 
-	auto network = UniquePtr<nvinfer1::INetworkDefinition>(builder->createNetwork());
-	if (!network)
-		return false;
+bool CaffeModel::build(bool is_caffe) {
+	if(is_caffe) {
+		auto builder = UniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
+		if (!builder)
+			return false;
 
-	auto parser = UniquePtr<nvcaffeparser1::ICaffeParser>(nvcaffeparser1::createCaffeParser());
-	if (!parser)
-		return false;
+		auto network = UniquePtr<nvinfer1::INetworkDefinition>(builder->createNetwork());
+		if (!network)
+			return false;
 
-	constructNetwork(builder, network, parser);
-
-	mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(builder->buildCudaEngine(*network), dtrCommon::DtrInferDeleter());
-	if (!mEngine)
-		return false;
-
+		auto parser = UniquePtr<nvcaffeparser1::ICaffeParser>(nvcaffeparser1::createCaffeParser());
+		if (!parser)
+			return false;
+		constructNetwork(builder, network, parser);
+		mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(builder->buildCudaEngine(*network), dtrCommon::DtrInferDeleter());
+		if (!mEngine)
+			return false;
+	} else {
+		ICudaEngine* engine = nullptr;
+		std::vector<char> trtModelStream;
+		size_t size = 0;
+		std::ifstream file(locateFile(mParams.gieFileName, mParams.dataDirs).c_str(), std::ios::binary);
+		if (file.good()) {
+			file.seekg(0, file.end);
+			size = file.tellg();
+			file.seekg(0, file.beg);
+			trtModelStream.resize(size);
+			file.read(trtModelStream.data(), size);
+			file.close();
+		} else {
+			gLogError << mParams.gieFileName << " load failed\n";
+			return false;
+		}
+		IRuntime* infer = createInferRuntime(gLogger.getTRTLogger());
+		if (mParams.useDLACore >= 0) {
+			infer->setDLACore(mParams.useDLACore);
+		}
+		engine = infer->deserializeCudaEngine(trtModelStream.data(), size, nullptr);
+		mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(engine, dtrCommon::DtrInferDeleter());
+		gLogInfo << mParams.gieFileName << " has been successfully loaded." << std::endl;
+		infer->destroy();
+		if (!mEngine) {
+			gLogError <<  "ICudaEngine" << " load failed\n";
+			return false;
+		}
+	}
 	return true;
 }
 
@@ -59,35 +89,11 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
 	}
 
 	dtrCommon::enableDLA(builder.get(), mParams.useDLACore);
-	builder->setMaxBatchSize(mParams.batchSize);
+	builder->setMaxBatchSize(mParams.maxBatchSize);
 	builder->setMaxWorkspaceSize(16_MB);
 	builder->setFp16Mode(mParams.fp16);
 	builder->setInt8Mode(mParams.int8);
 }
-
-// ICudaEngine* createEngineFromGIE(dtrCommon::GIENNParams& gParams) {
-// 	ICudaEngine* engine = nullptr;
-// 	std::vector<char> trtModelStream;
-// 	size_t size{0};
-// 	std::ifstream file(gParams.gieFileName, std::ios::binary);
-// 	if (file.good()) {
-// 		file.seekg(0, file.end);
-// 		size = file.tellg();
-// 		file.seekg(0, file.beg);
-// 		trtModelStream.resize(size);
-// 		file.read(trtModelStream.data(), size);
-// 		file.close();
-// 	}
-
-// 	IRuntime* infer = createInferRuntime(gLogger.getTRTLogger());
-// 	if (gParams.useDLACore >= 0) {
-// 		infer->setDLACore(gParams.useDLACore);
-// 	}
-// 	engine = infer->deserializeCudaEngine(trtModelStream.data(), size, nullptr);
-// 	gLogInfo << gParams.gieFileName << " has been successfully loaded." << std::endl;
-// 	infer->destroy();
-// 	return engine;
-// }
 
 DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, std::string& tensorname) {
 	int index = mEngine->getBindingIndex(tensorname.c_str());

@@ -238,7 +238,7 @@ void printHelp(const char* name)
 const std::string gSampleName = "TensorRT.sample_fasterRCNN";
 DtrProfiler gProfiler("FasterRCNN-Profiler.log");
 int main(int argc, char** argv) {
-    // setReportableSeverity(Severity::kINFO);
+    setReportableSeverity(Severity::kINFO);
     bool argsOK = dtrCommon::parseArgs(gArgs, argc, argv);
     if (gArgs.help || !argsOK)
     {
