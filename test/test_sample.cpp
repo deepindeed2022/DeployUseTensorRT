@@ -8,12 +8,6 @@ dtrCommon::CaffeNNParams initializeNNParams() {
 	params.dataDirs.push_back("data/googlenet/");
 	params.prototxtFileName = "googlenet.prototxt";
 	params.weightsFileName = "googlenet.caffemodel";
-	// params.dataDirs.push_back("data/squeezenet/");
-	// params.prototxtFileName = "deploy.prototxt";
-	// params.weightsFileName = "squeezenet_v1.1.caffemodel";
-	// params.dataDirs.push_back("data/mnist/");
-	// params.prototxtFileName = "deploy.prototxt";
-	// params.weightsFileName = "mnist.caffemodel";
 	params.inputTensorNames.push_back("data");
 	params.batchSize = 4;
 	params.outputTensorNames.push_back("prob");
@@ -29,13 +23,17 @@ TEST(Init, CaffeModel) {
 	auto begin = std::chrono::high_resolution_clock::now();
    	bool status = sample.build();
 	auto end = std::chrono::high_resolution_clock::now();
-	fprintf(stderr, "loadmodel time: %.2lf ms\n", (std::chrono::duration_cast<milliseconds>(end - begin)).count());
+	fprintf(stderr, "loadmodel time: %ld ms\n", (std::chrono::duration_cast<milliseconds>(end - begin)).count());
 	
 	if(status) {
 		DataBlob32f input(1,3,224,224);
+		memset(input.ptr(), 0, input.total_n_elem()*sizeof(float));
 		std::vector<DataBlob32f> inputs{input};
-		begin = high_resolution_clock::now();
 		std::vector<DataBlob32f> res = sample.infer(inputs);
+		begin = high_resolution_clock::now();
+		for(int i = 0; i < 10; i++) {
+			std::vector<DataBlob32f> res = sample.infer(inputs);
+		}
 		end = high_resolution_clock::now();
 		fprintf(stderr, "infer time: %.2lf ms\n", (std::chrono::duration_cast<milliseconds>(end - begin)).count()/10.0f);
 		sample.teardown();

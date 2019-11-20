@@ -34,10 +34,13 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
 	if (!blobNameToTensor) {
 		gLogError << "BlobNameToTensor parse failed\n";
 	}
-
+	bool parseInput = false;
+	if(mParams.inputTensorNames.empty()) {
+		parseInput = true;
+	}
 	for (int i = 0, n = network->getNbInputs(); i < n; i++) {
 		Dims3 dims = static_cast<Dims3&&>(network->getInput(i)->getDimensions());
-		mParams.inputTensorNames.push_back(network->getInput(i)->getName());
+		if(parseInput) mParams.inputTensorNames.push_back(network->getInput(i)->getName());
 		gInputDimensions.insert(std::make_pair(network->getInput(i)->getName(), dims));
 	}
 
@@ -96,7 +99,7 @@ DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, 
 	void* buf = buffers.getHostBuffer(tensorname);
 	size_t bufSize = buffers.size(tensorname);
 	if(nvinfer1::DataType::kFLOAT == data_type) {
-		std::cout << "float" << std::endl;
+		gLogInfo << "float" << std::endl;
 		CHECK(bufSize == res.nums()*inst_size);
 		float* typebuf = static_cast<float*>(buf);
 		for(size_t i = 0; i < res.nums(); ++i) {
@@ -107,7 +110,7 @@ DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, 
 			typebuf += inst_size;
 		}
 	} else if(nvinfer1::DataType::kHALF == data_type){
-		std::cout << "half" << std::endl;
+		gLogInfo << "half" << std::endl;
 		half_float::half* half_typebuf = static_cast<half_float::half*>(buf);
 		for(size_t i = 0; i < res.nums(); ++i) {
 			float* dst = res.ptr(i);
@@ -117,7 +120,7 @@ DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, 
 			half_typebuf += inst_size;
 		}
 	} else if(data_type == nvinfer1::DataType::kINT8) {
-		std::cout << "int8" << std::endl;
+		gLogInfo << "int8" << std::endl;
 		char* c_typebuf = static_cast<char*>(buf);
 		for(size_t i = 0; i < res.nums(); ++i) {
 			float* dst = res.ptr(i);
@@ -127,7 +130,7 @@ DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, 
 			c_typebuf += inst_size;
 		}
 	} else if(data_type == nvinfer1::DataType::kINT32) {
-		std::cout << "int32" << std::endl;
+		gLogInfo << "int32" << std::endl;
 		int* i_typebuf = static_cast<int*>(buf);
 		for(size_t i = 0; i < res.nums(); ++i) {
 			float* dst = res.ptr(i);
@@ -137,7 +140,7 @@ DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, 
 			i_typebuf += inst_size;
 		}
 	} else {
-		std::cout << "not support type" << std::endl;
+		gLogError << "not support type" << std::endl;
 	}
 	return std::move(res);
 }
@@ -149,23 +152,26 @@ std::vector<DataBlob32f> CaffeModel::infer(const std::vector<DataBlob32f>& input
 std::vector<DataBlob32f> CaffeModel::infer(const std::vector<DataBlob32f>& input_blobs, bool use_cudastream = true) {
 	dtrCommon::BufferManager buffers(mEngine, mParams.batchSize);
 	auto context = UniquePtr<nvinfer1::IExecutionContext>(mEngine->createExecutionContext());
-	if (!context) return {};
-	CHECK(mParams.inputTensorNames.size() == input_blobs.size());
+	if(!context || mParams.inputTensorNames.size() != input_blobs.size()) {
+		return {};
+	}
+	cudaStream_t stream;
+	CHECK(cudaStreamCreate(&stream));
 	for (size_t i = 0; i < mParams.inputTensorNames.size(); ++i) {
+
 		std::string input = mParams.inputTensorNames[i];
 		size_t size = sizeof(float)*input_blobs[i].total_n_elem();
 		CHECK(buffers.size(input) == size);
-		cudaMemcpy(buffers.getDeviceBuffer(input), (void*)input_blobs[i].ptr(0), size, cudaMemcpyHostToDevice);
+		void* devicebuffer = buffers.getDeviceBuffer(input);
+		CHECK(cudaMemcpyAsync(devicebuffer, (void*)input_blobs[i].ptr(), size, cudaMemcpyHostToDevice, stream));
 	}
 	bool status = false;
 	if(use_cudastream) {
-		cudaStream_t stream;
-		CHECK(cudaStreamCreate(&stream));
 		status = context->enqueue(mParams.batchSize, buffers.getDeviceBindings().data(), stream, nullptr);
-		cudaStreamDestroy(stream);
 	} else {
 		status = context->execute(mParams.batchSize, buffers.getDeviceBindings().data());
 	}
+	cudaStreamDestroy(stream);
 	if (!status) return {};
 	buffers.copyOutputToHost();
 	std::vector<DataBlob32f> results;
