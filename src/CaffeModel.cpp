@@ -65,6 +65,72 @@ bool CaffeModel::build(bool is_caffe) {
 	return true;
 }
 
+void CaffeModel::setLayerPrecision(UniquePtr<nvinfer1::INetworkDefinition>& network) {
+    gLogInfo << "Setting Per Layer Computation Precision" << std::endl;
+    for (int i = 0; i < network->getNbLayers(); ++i) {
+        auto layer = network->getLayer(i);
+        std::string layerName = layer->getName();
+        gLogInfo << "Layer: " << layerName << ". Precision: INT8" << std::endl;
+        // set computation precision of the layer
+        layer->setPrecision(nvinfer1::DataType::kINT8);
+
+        for (int j = 0; j < layer->getNbOutputs(); ++j) {
+            std::string tensorName = layer->getOutput(j)->getName();
+            gLogInfo << "Tensor: " << tensorName << ". OutputType: INT8" << std::endl;
+            // set output type of the tensor
+            layer->setOutputType(j, nvinfer1::DataType::kINT8);
+        }
+    }
+}
+
+std::map<std::string, float> readPerTensorDynamicRangeValues(std::string& dynamicRangeFile) {
+    std::ifstream iDynamicRangeStream(dynamicRangeFile);
+    if (!iDynamicRangeStream) {
+        gLogError << "Could not find per tensor scales file: " << dynamicRangeFile << std::endl;
+        return {};
+    }
+	std::map<std::string, float> perTensorDynamicRange;
+    std::string line;
+    char delim = ':';
+    while (std::getline(iDynamicRangeStream, line)) {
+        std::istringstream iline(line);
+        std::string token;
+        std::getline(iline, token, delim);
+        std::string tensorName = token;
+        std::getline(iline, token, delim);
+        float dynamicRange = std::stof(token);
+        perTensorDynamicRange[tensorName] = dynamicRange;
+    }
+    return perTensorDynamicRange;
+}
+
+
+//!
+//! \brief  Sets custom dynamic range for network tensors
+//!
+bool CaffeModel::setDynamicRange(UniquePtr<nvinfer1::INetworkDefinition>& network, std::map<std::string, float>& perTensorDynamicRange) {
+    gLogInfo << "Setting Per Tensor Dynamic Range" << std::endl;
+    // set dynamic range for network input tensors
+    for (int i = 0; i < network->getNbInputs(); ++i) {
+        std::string tName = network->getInput(i)->getName();
+        if (perTensorDynamicRange.find(tName) != perTensorDynamicRange.end()) {
+            network->getInput(i)->setDynamicRange(-perTensorDynamicRange.at(tName), perTensorDynamicRange.at(tName));
+        }
+    }
+    // set dynamic range for layer output tensors
+    for (int i = 0; i < network->getNbLayers(); ++i) {
+        for (int j = 0; j < network->getLayer(i)->getNbOutputs(); ++j) {
+            std::string tName = network->getLayer(i)->getOutput(j)->getName();
+            if (perTensorDynamicRange.find(tName) != perTensorDynamicRange.end()) {
+                // Calibrator generated dynamic range for network tensor can be overriden or set using below API
+                network->getLayer(i)->getOutput(j)->setDynamicRange(-perTensorDynamicRange.at(tName), perTensorDynamicRange.at(tName));
+            }
+        }
+    }
+    return true;
+}
+
+
 void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, UniquePtr<nvinfer1::INetworkDefinition>& network, UniquePtr<nvcaffeparser1::ICaffeParser>& parser) {
 	const nvcaffeparser1::IBlobNameToTensor* blobNameToTensor = parser->parse(
 		locateFile(mParams.prototxtFileName, mParams.dataDirs).c_str(),
@@ -99,11 +165,34 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
 				 << dims.d[2] << std::endl;
 	}
 
-	dtrCommon::enableDLA(builder.get(), mParams.useDLACore);
-	builder->setMaxBatchSize(mParams.maxBatchSize);
-	builder->setMaxWorkspaceSize(16_MB);
-	builder->setFp16Mode(mParams.fp16);
-	builder->setInt8Mode(mParams.int8);
+    auto maxBatchSize = mParams.batchSize;
+    if (mParams.useDLACore >= 0) {
+		dtrCommon::enableDLA(builder.get(), mParams.useDLACore);
+        if (maxBatchSize > builder->getMaxDLABatchSize()) {
+            std::cerr << "Requested batch size " << maxBatchSize << " is greater than the max DLA batch size of "
+                      << builder->getMaxDLABatchSize() << ". Reducing batch size accordingly." << std::endl;
+            maxBatchSize = builder->getMaxDLABatchSize();
+        }
+    }
+    builder->setMaxBatchSize(maxBatchSize);
+	builder->setMaxWorkspaceSize(1_GB);
+	if(mParams.fp16 && builder->platformHasFastFp16()) {
+		gLogInfo << "Use FP16\n";
+	}
+	if (mParams.int8 && builder->platformHasFastInt8()) {
+		// Enable INT8 model. Required to set custom per tensor dynamic range or INT8 Calibration
+		builder->setInt8Mode(true);
+		// // Mark calibrator as null. As user provides dynamic range for each tensor, no calibrator is required
+    	// builder->setInt8Calibrator(nullptr);
+		// force layer to execute with required precision
+		builder->setStrictTypeConstraints(true);
+		this->setLayerPrecision(network);
+		std::map<std::string, float> perTensorDynamicRange = readPerTensorDynamicRangeValues(mParams.perTensorDynamicRangeFileName);
+		// set INT8 Per Tensor Dynamic range
+		if (!this->setDynamicRange(network, perTensorDynamicRange)) {
+			gLogError << "Unable to set per tensor dynamic range." << std::endl;
+		}
+    }
 }
 
 DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, std::string& tensorname) {

@@ -41,5 +41,8 @@ private:
 	std::map<std::string, shape_t> gInputDimensions;
 	std::shared_ptr<nvinfer1::ICudaEngine> mEngine = nullptr; //!< The TensorRT engine used to run the network
 	void constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, UniquePtr<nvinfer1::INetworkDefinition>& network, UniquePtr<nvcaffeparser1::ICaffeParser>& parser);
+	// for Int8Mode
+	void setLayerPrecision(UniquePtr<nvinfer1::INetworkDefinition>& network);
+	bool setDynamicRange(UniquePtr<nvinfer1::INetworkDefinition>& network, std::map<std::string, float>& perTensorDynamicRange);
 };
 #endif

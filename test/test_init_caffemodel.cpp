@@ -19,6 +19,8 @@ dtrCommon::CaffeNNParams initializeNNParams() {
 
 TEST(Init, CaffeModel) {
 	dtrCommon::CaffeNNParams params = initializeNNParams();
+	// params.int8 = true;
+	// params.perTensorDynamicRangeFileName = "";
 	CaffeModel sample(params);
 	auto begin = std::chrono::high_resolution_clock::now();
    	bool status = sample.build(true);

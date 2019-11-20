@@ -39,6 +39,7 @@ typedef struct CaffeNNParams : public NNParams {
     std::string prototxtFileName; //!< Filename of prototxt design file of a network
     std::string weightsFileName;  //!< Filename of trained weights file of a network
     std::string gieFileName;
+    std::string perTensorDynamicRangeFileName;
 } CaffeNNParams;
 
 // typedef struct GIENNParams : public NNParams {
