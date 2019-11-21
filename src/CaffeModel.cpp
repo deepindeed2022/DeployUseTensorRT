@@ -136,7 +136,7 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
 		locateFile(mParams.prototxtFileName, mParams.dataDirs).c_str(),
 		locateFile(mParams.weightsFileName, mParams.dataDirs).c_str(),
 		*network,
-		nvinfer1::DataType::kFLOAT);
+		mParams.fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT);
 
 	if (!blobNameToTensor) {
 		gLogError << "BlobNameToTensor parse failed\n";
@@ -178,6 +178,7 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
 	builder->setMaxWorkspaceSize(1_GB);
 	if(mParams.fp16 && builder->platformHasFastFp16()) {
 		gLogInfo << "Use FP16\n";
+		builder->setHalf2Mode(true);
 	}
 	if (mParams.int8 && builder->platformHasFastInt8()) {
 		// Enable INT8 model. Required to set custom per tensor dynamic range or INT8 Calibration
