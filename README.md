@@ -85,8 +85,9 @@ INT8 vector dot products (DP4A) improve the efficiency of radio astronomy cross-
 - [ ] plugin & extend layers
   - [ ] 设计plugin的管理机制,更新初始化流程
   - [ ] [interp](https://github.com/hszhao/PSPNet)
-  - [ ] [ROIPooling](https://github.com/rbgirshick/caffe-fast-rcnn/tree/0dcd397b29507b8314e252e850518c5695efbb83)
-  - [ ] [RPNProposal]()
+  - [x] [ROIPooling](https://github.com/rbgirshick/caffe-fast-rcnn/tree/0dcd397b29507b8314e252e850518c5695efbb83)
+  - [x] [RPNProposal]()
+  - [x] [PriorBox]()
   - [ ] [ChannelShuffle]()
   - [ ] [CTC]()
   - [ ] [SLLSTM]()
@@ -110,6 +111,7 @@ INT8 vector dot products (DP4A) improve the efficiency of radio astronomy cross-
 - [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/models/getModels.sh)
    https://github.com/CMU-Perceptual-Computing-Lab/openpose
 - wget https://s3.amazonaws.com/download.onnx/models/opset_3/resnet50.tar.gz (Link source: https://github.com/onnx/models/tree/master/resnet50)
+
 ## 附录
 
 ### Init.CaffeModel
@@ -245,3 +247,133 @@ infer time: 2.80 ms
 6) 从Caffe Parser添加Plugin：首先通过`Parsernvinfer1::IPlugin* createPlugin()`实现nvcaffeparser1::IPlugin 接口，然后传递工厂实例到`ICaffeParser::parse()`，Caffe的Parser才能识别
 
 7) 运行时创建插件：通过`IPlugin* createPlugin()`实现nvinfer1::IPlugin接口，传递工厂实例到`IInferRuntime::deserializeCudaEngine()`
+
+### TensorRT 中已经实现的Plugin
+
+```cpp
+extern "C" {
+//!
+//! \brief Create a plugin layer that fuses the RPN and ROI pooling using user-defined parameters.
+//! Registered plugin type "RPROI_TRT". Registered plugin version "1".
+//! \param featureStride Feature stride.
+//! \param preNmsTop Number of proposals to keep before applying NMS.
+//! \param nmsMaxOut Number of remaining proposals after applying NMS.
+//! \param iouThreshold IoU threshold.
+//! \param minBoxSize Minimum allowed bounding box size before scaling.
+//! \param spatialScale Spatial scale between the input image and the last feature map.
+//! \param pooling Spatial dimensions of pooled ROIs.
+//! \param anchorRatios Aspect ratios for generating anchor windows.
+//! \param anchorScales Scales for generating anchor windows.
+//!
+//! \return Returns a FasterRCNN fused RPN+ROI pooling plugin. Returns nullptr on invalid inputs.
+//!
+TENSORRTAPI nvinfer1::IPluginV2* createRPNROIPlugin(int featureStride, int preNmsTop,
+                                                                int nmsMaxOut, float iouThreshold, float minBoxSize,
+                                                                float spatialScale, nvinfer1::DimsHW pooling,
+                                                                nvinfer1::Weights anchorRatios, nvinfer1::Weights anchorScales);
+
+//!
+//! \brief The Normalize plugin layer normalizes the input to have L2 norm of 1 with scale learnable.
+//! Registered plugin type "Normalize_TRT". Registered plugin version "1".
+//! \param scales Scale weights that are applied to the output tensor.
+//! \param acrossSpatial Whether to compute the norm over adjacent channels (acrossSpatial is true) or nearby spatial locations (within channel in which case acrossSpatial is false).
+//! \param channelShared Whether the scale weight(s) is shared across channels.
+//! \param eps Epsilon for not diviiding by zero.
+//!
+TENSORRTAPI nvinfer1::IPluginV2* createNormalizePlugin(const nvinfer1::Weights* scales, bool acrossSpatial, bool channelShared, float eps);
+
+//!
+//! \brief The PriorBox plugin layer generates the prior boxes of designated sizes and aspect ratios across all dimensions (H x W).
+//! PriorBoxParameters defines a set of parameters for creating the PriorBox plugin layer.
+//! Registered plugin type "PriorBox_TRT". Registered plugin version "1".
+//!
+TENSORRTAPI nvinfer1::IPluginV2* createPriorBoxPlugin(nvinfer1::plugin::PriorBoxParameters param);
+
+//!
+//! \brief The Grid Anchor Generator plugin layer generates the prior boxes of
+//! designated sizes and aspect ratios across all dimensions (H x W) for all feature maps.
+//! GridAnchorParameters defines a set of parameters for creating the GridAnchorGenerator plugin layer.
+//! Registered plugin type "GridAnchor_TRT". Registered plugin version "1".
+//!
+TENSORRTAPI nvinfer1::IPluginV2* createAnchorGeneratorPlugin(nvinfer1::plugin::GridAnchorParameters* param, int numLayers);
+
+//!
+//! \brief The DetectionOutput plugin layer generates the detection output based on location and confidence predictions by doing non maximum suppression.
+//! DetectionOutputParameters defines a set of parameters for creating the DetectionOutput plugin layer.
+//! Registered plugin type "NMS_TRT". Registered plugin version "1".
+//!
+TENSORRTAPI nvinfer1::IPluginV2* createNMSPlugin(nvinfer1::plugin::DetectionOutputParameters param);
+
+//!
+//! \brief The LReLu plugin layer performs leaky ReLU for 4D tensors. Give an input value x, the PReLU layer computes the output as x if x > 0 and negative_slope //! x if x <= 0.
+//! Registered plugin type "LReLU_TRT". Registered plugin version "1".
+//! \param negSlope Negative_slope value.
+//!
+TENSORRTAPI nvinfer1::IPluginV2* createLReLUPlugin(float negSlope);
+
+//!
+//! \brief The Reorg plugin reshapes input of shape CxHxW into a (C*stride*stride)x(H/stride)x(W/stride) shape, used in YOLOv2.
+//! It does that by taking 1 x stride x stride slices from tensor and flattening them into (stridexstride) x 1 x 1 shape.
+//! Registered plugin type "Reorg_TRT". Registered plugin version "1".
+//! \param stride Strides in H and W, it should divide both H and W. Also stride * stride should be less than or equal to C.
+//!
+TENSORRTAPI nvinfer1::IPluginV2* createReorgPlugin(int stride);
+
+//!
+//! \brief The Region plugin layer performs region proposal calculation: generate 5 bounding boxes per cell (for yolo9000, generate 3 bounding boxes per cell).
+//! For each box, calculating its probablities of objects detections from 80 pre-defined classifications (yolo9000 has 9416 pre-defined classifications,
+//! and these 9416 items are organized as work-tree structure).
+//! RegionParameters defines a set of parameters for creating the Region plugin layer.
+//! Registered plugin type "Region_TRT". Registered plugin version "1".
+//!
+TENSORRTAPI nvinfer1::IPluginV2* createRegionPlugin(nvinfer1::plugin::RegionParameters params);
+
+//!
+//! \brief The Clip Plugin performs a clip operation on the input tensor. It
+//! clips the tensor values to a specified min and max. Any value less than clipMin are set to clipMin.
+//! Any values greater than clipMax are set to clipMax. For example, this plugin can be used
+//! to perform a Relu6 operation by specifying clipMin=0.0 and clipMax=6.0
+//! Registered plugin type "Clip_TRT". Registered plugin version "1".
+//! \param layerName The name of the TensorRT layer.
+//! \param clipMin The minimum value to clip to.
+//! \param clipMax The maximum value to clip to.
+//!
+TENSORRTAPI nvinfer1::IPluginV2* createClipPlugin(const char* layerName, float clipMin, float clipMax);
+
+//!
+//! \brief The BatchedNMS Plugin performs non_max_suppression on the input boxes, per batch, across all classes.
+//! It greedily selects a subset of bounding boxes in descending order of
+//! score. Prunes away boxes that have a high intersection-over-union (IOU)
+//! overlap with previously selected boxes. Bounding boxes are supplied as [y1, x1, y2, x2],
+//! where (y1, x1) and (y2, x2) are the coordinates of any
+//! diagonal pair of box corners and the coordinates can be provided as normalized
+//! (i.e., lying in the interval [0, 1]) or absolute.
+//! The plugin expects two inputs.
+//! Input0 is expected to be 4-D float boxes tensor of shape [batch_size, num_boxes,
+//! q, 4], where q can be either 1 (if shareLocation is true) or num_classes.
+//! Input1 is expected to be a 3-D float scores tensor of shape [batch_size, num_boxes, num_classes]
+//! representing a single score corresponding to each box.
+//! The plugin returns four outputs.
+//! num_detections : A [batch_size] int32 tensor indicating the number of valid
+//! detections per batch item. Can be less than keepTopK. Only the top num_detections[i] entries in
+//! nmsed_boxes[i], nmsed_scores[i] and nmsed_classes[i] are valid.
+//! nmsed_boxes : A [batch_size, max_detections, 4] float32 tensor containing
+//! the co-ordinates of non-max suppressed boxes.
+//! nmsed_scores : A [batch_size, max_detections] float32 tensor containing the
+//! scores for the boxes.
+//! nmsed_classes :  A [batch_size, max_detections] float32 tensor containing the
+//! classes for the boxes.
+//!
+//! Registered plugin type "BatchedNMS_TRT". Registered plugin version "1".
+//!
+TENSORRTAPI nvinfer1::IPluginV2* createBatchedNMSPlugin(nvinfer1::plugin::NMSParameters param);
+
+//!
+//! \brief Initialize and register all the existing TensorRT plugins to the Plugin Registry with an optional namespace.
+//! The plugin library author should ensure that this function name is unique to the library.
+//! This function should be called once before accessing the Plugin Registry.
+//! \param logger Logger object to print plugin registration information
+//! \param libNamespace Namespace used to register all the plugins in this library
+//!
+TENSORRTAPI bool initLibNvInferPlugins(void* logger, const char* libNamespace);
+```
