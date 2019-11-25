@@ -306,7 +306,7 @@ public:
 			mPlugin = std::unique_ptr<FCPlugin>(new FCPlugin(weights, nbWeights, NB_OUTPUT_CHANNELS));
 			return mPlugin.get();
 		} catch (std::exception& e) {
-			gLogError << e.what() << std::endl;
+			LOG_ERROR(gLogger) << e.what() << std::endl;
 		}
 
 		return nullptr;
@@ -320,7 +320,7 @@ public:
 			// IPluginExt::destroy()
 			return new FCPlugin(serialData, serialLength);
 		} catch (std::exception& e) {
-			gLogError << e.what() << std::endl;
+			LOG_ERROR(gLogger) << e.what() << std::endl;
 		}
 
 		return nullptr;

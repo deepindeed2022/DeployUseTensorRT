@@ -10,7 +10,7 @@ CaffeModel::shape_t CaffeModel::getInputDimension(int index) {
 		if(gInputDimensions.find(layername)!= gInputDimensions.end()) {
 			return gInputDimensions[layername];
 		} else {
-			gLogError << "Only init from prototxt and caffemodel could call CaffeModel::InputDimension\n";
+			LOG_ERROR(gLogger) << "Only init from prototxt and caffemodel could call CaffeModel::InputDimension\n";
 		}
 	}
 	return {};
@@ -46,7 +46,7 @@ bool CaffeModel::build(bool is_caffe) {
 			file.read(trtModelStream.data(), size);
 			file.close();
 		} else {
-			gLogError << mParams.gieFileName << " load failed\n";
+			LOG_ERROR(gLogger) << mParams.gieFileName << " load failed\n";
 			return false;
 		}
 		IRuntime* infer = createInferRuntime(gLogger.getTRTLogger());
@@ -55,10 +55,10 @@ bool CaffeModel::build(bool is_caffe) {
 		}
 		engine = infer->deserializeCudaEngine(trtModelStream.data(), size, nullptr);
 		mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(engine, dtrCommon::DtrInferDeleter());
-		gLogInfo << mParams.gieFileName << " has been successfully loaded." << std::endl;
+		LOG_INFO(gLogger) << mParams.gieFileName << " has been successfully loaded." << std::endl;
 		infer->destroy();
 		if (!mEngine) {
-			gLogError <<  "ICudaEngine" << " load failed\n";
+			LOG_ERROR(gLogger) <<  "ICudaEngine" << " load failed\n";
 			return false;
 		}
 	}
@@ -66,17 +66,17 @@ bool CaffeModel::build(bool is_caffe) {
 }
 
 void CaffeModel::setLayerPrecision(UniquePtr<nvinfer1::INetworkDefinition>& network) {
-    gLogInfo << "Setting Per Layer Computation Precision" << std::endl;
+    LOG_INFO(gLogger) << "Setting Per Layer Computation Precision" << std::endl;
     for (int i = 0; i < network->getNbLayers(); ++i) {
         auto layer = network->getLayer(i);
         std::string layerName = layer->getName();
-        gLogInfo << "Layer: " << layerName << ". Precision: INT8" << std::endl;
+        LOG_INFO(gLogger) << "Layer: " << layerName << ". Precision: INT8" << std::endl;
         // set computation precision of the layer
         layer->setPrecision(nvinfer1::DataType::kINT8);
 
         for (int j = 0; j < layer->getNbOutputs(); ++j) {
             std::string tensorName = layer->getOutput(j)->getName();
-            gLogInfo << "Tensor: " << tensorName << ". OutputType: INT8" << std::endl;
+            LOG_INFO(gLogger) << "Tensor: " << tensorName << ". OutputType: INT8" << std::endl;
             // set output type of the tensor
             layer->setOutputType(j, nvinfer1::DataType::kINT8);
         }
@@ -86,7 +86,7 @@ void CaffeModel::setLayerPrecision(UniquePtr<nvinfer1::INetworkDefinition>& netw
 std::map<std::string, float> readPerTensorDynamicRangeValues(std::string& dynamicRangeFile) {
     std::ifstream iDynamicRangeStream(dynamicRangeFile);
     if (!iDynamicRangeStream) {
-        gLogError << "Could not find per tensor scales file: " << dynamicRangeFile << std::endl;
+        LOG_ERROR(gLogger) << "Could not find per tensor scales file: " << dynamicRangeFile << std::endl;
         return {};
     }
 	std::map<std::string, float> perTensorDynamicRange;
@@ -109,7 +109,7 @@ std::map<std::string, float> readPerTensorDynamicRangeValues(std::string& dynami
 //! \brief  Sets custom dynamic range for network tensors
 //!
 bool CaffeModel::setDynamicRange(UniquePtr<nvinfer1::INetworkDefinition>& network, std::map<std::string, float>& perTensorDynamicRange) {
-    gLogInfo << "Setting Per Tensor Dynamic Range" << std::endl;
+    LOG_INFO(gLogger) << "Setting Per Tensor Dynamic Range" << std::endl;
     // set dynamic range for network input tensors
     for (int i = 0; i < network->getNbInputs(); ++i) {
         std::string tName = network->getInput(i)->getName();
@@ -139,7 +139,7 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
 		mParams.fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT);
 
 	if (!blobNameToTensor) {
-		gLogError << "BlobNameToTensor parse failed\n";
+		LOG_ERROR(gLogger) << "BlobNameToTensor parse failed\n";
 	}
 	bool parseInput = false;
 	if(mParams.inputTensorNames.empty()) {
@@ -154,14 +154,14 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
 	// specify which tensors are outputs
 	for (auto& s : mParams.outputTensorNames) {
 		if (blobNameToTensor->find(s.c_str()) == nullptr) {
-			gLogError << "could not find output blob " << s << std::endl;
+			LOG_ERROR(gLogger) << "could not find output blob " << s << std::endl;
 		}
 		network->markOutput(*blobNameToTensor->find(s.c_str()));
 	}
 
 	for (int i = 0, n = network->getNbOutputs(); i < n; i++) {
 		Dims3 dims = static_cast<Dims3&&>(network->getOutput(i)->getDimensions());
-		gLogInfo << "Output \"" << network->getOutput(i)->getName() << "\": " << dims.d[0] << "x" << dims.d[1] << "x"
+		LOG_INFO(gLogger) << "Output \"" << network->getOutput(i)->getName() << "\": " << dims.d[0] << "x" << dims.d[1] << "x"
 				 << dims.d[2] << std::endl;
 	}
 
@@ -177,7 +177,7 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
     builder->setMaxBatchSize(maxBatchSize);
 	builder->setMaxWorkspaceSize(1_GB);
 	if(mParams.fp16 && builder->platformHasFastFp16()) {
-		gLogInfo << "Use FP16\n";
+		LOG_INFO(gLogger) << "Use FP16\n";
 		builder->setHalf2Mode(true);
 	}
 	if (mParams.int8 && builder->platformHasFastInt8()) {
@@ -191,12 +191,12 @@ void CaffeModel::constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, Unique
 		std::map<std::string, float> perTensorDynamicRange = readPerTensorDynamicRangeValues(mParams.perTensorDynamicRangeFileName);
 		// set INT8 Per Tensor Dynamic range
 		if (!this->setDynamicRange(network, perTensorDynamicRange)) {
-			gLogError << "Unable to set per tensor dynamic range." << std::endl;
+			LOG_ERROR(gLogger) << "Unable to set per tensor dynamic range." << std::endl;
 		}
     }
 }
 
-DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, std::string& tensorname) {
+DataBlob32f CaffeModel::getDataBlobFromBuffer(dtrCommon::BufferManager& buffers, std::string& tensorname) {
 	int index = mEngine->getBindingIndex(tensorname.c_str());
 	nvinfer1::Dims bufDims = mEngine->getBindingDimensions(index);
 	DataBlob32f res(bufDims.d[0],bufDims.d[1],bufDims.d[2],bufDims.d[3]);
@@ -206,7 +206,7 @@ DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, 
 	void* buf = buffers.getHostBuffer(tensorname);
 	size_t bufSize = buffers.size(tensorname);
 	if(nvinfer1::DataType::kFLOAT == data_type) {
-		gLogInfo << "float" << std::endl;
+		LOG_INFO(gLogger) << "float" << std::endl;
 		CHECK(bufSize == res.nums()*inst_size);
 		float* typebuf = static_cast<float*>(buf);
 		for(size_t i = 0; i < res.nums(); ++i) {
@@ -217,7 +217,7 @@ DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, 
 			typebuf += inst_size;
 		}
 	} else if(nvinfer1::DataType::kHALF == data_type){
-		gLogInfo << "half" << std::endl;
+		LOG_INFO(gLogger) << "half" << std::endl;
 		half_float::half* half_typebuf = static_cast<half_float::half*>(buf);
 		for(size_t i = 0; i < res.nums(); ++i) {
 			float* dst = res.ptr(i);
@@ -227,7 +227,7 @@ DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, 
 			half_typebuf += inst_size;
 		}
 	} else if(data_type == nvinfer1::DataType::kINT8) {
-		gLogInfo << "int8" << std::endl;
+		LOG_INFO(gLogger) << "int8" << std::endl;
 		char* c_typebuf = static_cast<char*>(buf);
 		for(size_t i = 0; i < res.nums(); ++i) {
 			float* dst = res.ptr(i);
@@ -237,7 +237,7 @@ DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, 
 			c_typebuf += inst_size;
 		}
 	} else if(data_type == nvinfer1::DataType::kINT32) {
-		gLogInfo << "int32" << std::endl;
+		LOG_INFO(gLogger) << "int32" << std::endl;
 		int* i_typebuf = static_cast<int*>(buf);
 		for(size_t i = 0; i < res.nums(); ++i) {
 			float* dst = res.ptr(i);
@@ -247,7 +247,7 @@ DataBlob32f CaffeModel::getDatBlobFromBuffer(dtrCommon::BufferManager& buffers, 
 			i_typebuf += inst_size;
 		}
 	} else {
-		gLogError << "not support type" << std::endl;
+		LOG_ERROR(gLogger) << "not support type" << std::endl;
 	}
 	return std::move(res);
 }
@@ -283,7 +283,7 @@ std::vector<DataBlob32f> CaffeModel::infer(const std::vector<DataBlob32f>& input
 	buffers.copyOutputToHost();
 	std::vector<DataBlob32f> results;
 	for(auto& tensorName: mParams.outputTensorNames) {
-		results.push_back(getDatBlobFromBuffer(buffers, tensorName));
+		results.push_back(getDataBlobFromBuffer(buffers, tensorName));
 	}
 	return results;
 }

@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
 		return EXIT_SUCCESS;
 	}
 	if (!argsOK) {
-		gLogError << "Invalid arguments" << std::endl;
+		LOG_ERROR(gLogger) << "Invalid arguments" << std::endl;
 		printHelpInfo();
 		return EXIT_FAILURE;
 	}
@@ -172,10 +172,10 @@ int main(int argc, char** argv) {
 	readPGMFile(std::to_string(num) + ".pgm", fileData);
 
 	// print an ascii representation
-	gLogInfo << "Input:\n";
+	LOG_INFO(gLogger) << "Input:\n";
 	for (int i = 0; i < INPUT_H * INPUT_W; i++)
-		gLogInfo << (" .:-=+*#%@"[fileData[i] / 26]) << (((i + 1) % INPUT_W) ? "" : "\n");
-	gLogInfo << std::endl;
+		LOG_INFO(gLogger) << (" .:-=+*#%@"[fileData[i] / 26]) << (((i + 1) % INPUT_W) ? "" : "\n");
+	LOG_INFO(gLogger) << std::endl;
 
 	ICaffeParser* parser = createCaffeParser();
 	assert(parser != nullptr);
@@ -218,7 +218,7 @@ int main(int argc, char** argv) {
 	pluginFactory.destroyPlugin();
 
 	// print a histogram of the output distribution
-	gLogInfo << "Output:\n";
+	LOG_INFO(gLogger) << "Output:\n";
 
 	bool pass{false};
 	for (int i = 0; i < 10; i++)
@@ -226,9 +226,9 @@ int main(int argc, char** argv) {
 		int res = std::floor(prob[i] * 10 + 0.5);
 		if (res == 10 && i == num)
 			pass = true;
-		gLogInfo << i << ": " << std::string(res, '*') << "\n";
+		LOG_INFO(gLogger) << i << ": " << std::string(res, '*') << "\n";
 	}
-	gLogInfo << std::endl;
+	LOG_INFO(gLogger) << std::endl;
 
 	return gLogger.reportTest(sampleTest, pass);
 }

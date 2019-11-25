@@ -320,11 +320,6 @@ inline bool writeASCIIFile(const string& fileName, const vector<T>& in) {
 }
 
 inline void print_version() {
-//... This can be only done after statically linking this support into parserONNX.library
-#if 0
-	std::cout << "Parser built against:" << std::endl;
-	std::cout << "  ONNX IR version:  " << nvonnxparser::onnx_ir_version_string(onnx::IR_VERSION) << std::endl;
-#endif
 	std::cout << "  TensorRT version: "
 			  << NV_TENSORRT_MAJOR << "."
 			  << NV_TENSORRT_MINOR << "."
@@ -397,7 +392,7 @@ inline void setAllTensorScales(INetworkDefinition* network, float inScales = 2.0
 inline void setDummyInt8Scales(const IBuilder* b, INetworkDefinition* n) {
 	// Set dummy tensor scales if Int8 mode is requested.
 	if (b->getInt8Mode()) {
-		gLogWarning << "Int8 calibrator not provided. Generating dummy per tensor scales. Int8 accuracy is not guaranteed." << std::endl;
+		LOG_WARN(gLogger) << "Int8 calibrator not provided. Generating dummy per tensor scales. Int8 accuracy is not guaranteed." << std::endl;
 		setAllTensorScales(n);
 	}
 }

@@ -16,7 +16,7 @@ public:
 		if(_plugin_map.find(std::string(type)) != _plugin_map.end()) {
 			return _plugin_map[std::string(type)]();
 		} else {
-			gLogError << "Plugin " << type << " not register!";
+			LOG_ERROR(gLogger) << "Plugin " << type << " not register!";
 			return NULL;
 		}
 	}

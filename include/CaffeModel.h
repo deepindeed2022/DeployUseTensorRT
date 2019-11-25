@@ -37,7 +37,7 @@ public:
 	dtrCommon::CaffeNNParams mParams;
 private:
 	shape_t convertToShape(nvinfer1::Dims3& dims) { return {1, dims.d[0], dims.d[1], dims.d[2]};}
-	DataBlob32f getDatBlobFromBuffer(dtrCommon::BufferManager & buffer, std::string& tensorname);
+	DataBlob32f getDataBlobFromBuffer(dtrCommon::BufferManager & buffer, std::string& tensorname);
 	std::map<std::string, shape_t> gInputDimensions;
 	std::shared_ptr<nvinfer1::ICudaEngine> mEngine = nullptr; //!< The TensorRT engine used to run the network
 	void constructNetwork(UniquePtr<nvinfer1::IBuilder>& builder, UniquePtr<nvinfer1::INetworkDefinition>& network, UniquePtr<nvcaffeparser1::ICaffeParser>& parser);

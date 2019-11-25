@@ -62,7 +62,7 @@ void caffeToTRTModel(const std::string& deployFile,           // Name for caffe 
     INetworkDefinition* network = builder->createNetwork();
     ICaffeParser* parser = createCaffeParser();
 
-    gLogInfo << "Begin parsing model..." << std::endl;
+    LOG_INFO(gLogger) << "Begin parsing model..." << std::endl;
     // 由于该模型是FP32的模型，所以DataType::kFLOAT
     // enum class DataType : int
     // {
@@ -75,7 +75,7 @@ void caffeToTRTModel(const std::string& deployFile,           // Name for caffe 
                                                               locateFile(modelFile).c_str(),
                                                               *network,
                                                               DataType::kFLOAT);
-    gLogInfo << "End parsing model..." << std::endl;
+    LOG_INFO(gLogger) << "End parsing model..." << std::endl;
     // Specify which tensors are outputs
     for (auto& s : outputs)
         network->markOutput(*blobNameToTensor->find(s.c_str()));
@@ -90,10 +90,10 @@ void caffeToTRTModel(const std::string& deployFile,           // Name for caffe 
     //
     dtrCommon::enableDLA(builder, gArgs.useDLACore);
 
-    gLogInfo << "Begin building engine..." << std::endl;
+    LOG_INFO(gLogger) << "Begin building engine..." << std::endl;
     ICudaEngine* engine = builder->buildCudaEngine(*network);
     assert(engine);
-    gLogInfo << "End building engine..." << std::endl;
+    LOG_INFO(gLogger) << "End building engine..." << std::endl;
 
     // We don't need the network any more, and we can destroy the parser
     network->destroy();
@@ -371,7 +371,7 @@ int main(int argc, char** argv) {
             {
                 int idx = indices[k];
                 std::string storeName = CLASSES[c] + "-" + std::to_string(scores[idx * OUTPUT_CLS_SIZE + c]) + ".ppm";
-                gLogInfo << "Detected " << CLASSES[c] << " in " << ppms[i].fileName << " with confidence " << scores[idx * OUTPUT_CLS_SIZE + c] * 100.0f << "% "
+                LOG_INFO(gLogger) << "Detected " << CLASSES[c] << " in " << ppms[i].fileName << " with confidence " << scores[idx * OUTPUT_CLS_SIZE + c] * 100.0f << "% "
                          << " (Result stored in " << storeName << ")." << std::endl;
 
                 dtrCommon::BBox b{bbox[idx * OUTPUT_BBOX_SIZE + c * 4], bbox[idx * OUTPUT_BBOX_SIZE + c * 4 + 1], bbox[idx * OUTPUT_BBOX_SIZE + c * 4 + 2], bbox[idx * OUTPUT_BBOX_SIZE + c * 4 + 3]};
@@ -382,7 +382,7 @@ int main(int argc, char** argv) {
     }
 
     delete[] data;
-    gLogInfo << gProfiler << std::endl;
+    LOG_INFO(gLogger) << gProfiler << std::endl;
 
     return gLogger.reportTest(sampleTest, pass);
 }

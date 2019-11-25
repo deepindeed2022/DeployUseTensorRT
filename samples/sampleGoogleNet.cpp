@@ -217,7 +217,7 @@ int main(int argc, char** argv)
         return EXIT_SUCCESS;
     }
     if (!argsOK) {
-        gLogError << "Invalid arguments" << std::endl;
+        LOG_ERROR(gLogger) << "Invalid arguments" << std::endl;
         printHelpInfo();
         return EXIT_FAILURE;
     }
@@ -229,7 +229,7 @@ int main(int argc, char** argv)
     dtrCommon::CaffeNNParams params = initializeNNParams(args);
     CaffeGoogleNet sample(params);
 
-    gLogInfo << "Building and running a GPU inference engine for GoogleNet" << std::endl;
+    LOG_INFO(gLogger) << "Building and running a GPU inference engine for GoogleNet" << std::endl;
 
     if (!sample.build()) {
         return gLogger.reportFail(sampleTest);
@@ -239,21 +239,21 @@ int main(int argc, char** argv)
         return gLogger.reportFail(sampleTest);
     }
 
-    gLogInfo << "Ran " << argv[0] << " with: " << std::endl;
+    LOG_INFO(gLogger) << "Ran " << argv[0] << " with: " << std::endl;
 
     std::stringstream ss;
 
     ss << "Input(s): ";
     for (auto& input : sample.mParams.inputTensorNames)
         ss << input << " ";
-    gLogInfo << ss.str() << std::endl;
+    LOG_INFO(gLogger) << ss.str() << std::endl;
 
     ss.str(std::string());
 
     ss << "Output(s): ";
     for (auto& output : sample.mParams.outputTensorNames)
         ss << output << " ";
-    gLogInfo << ss.str() << std::endl;
+    LOG_INFO(gLogger) << ss.str() << std::endl;
 
     return gLogger.reportPass(sampleTest);
 }

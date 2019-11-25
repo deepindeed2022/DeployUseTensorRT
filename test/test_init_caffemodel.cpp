@@ -45,7 +45,7 @@ TEST(Init, CaffeModel) {
 		fprintf(stderr, "infer time: %.2lf ms\n", (std::chrono::duration_cast<milliseconds>(end - begin)).count()/10.0f);
 		sample.teardown();
 	} else {
-		gLogError << "model load status:" << status << std::endl;
+		LOG_ERROR(gLogger) << "model load status:" << status << std::endl;
 	}
 }
 
@@ -70,6 +70,6 @@ TEST(Init, GIEModel) {
 		fprintf(stderr, "infer time: %.2lf ms\n", (std::chrono::duration_cast<milliseconds>(end - begin)).count()/10.0f);
 		sample.teardown();
 	} else {
-		gLogError << "model load status:" << status << std::endl;
+		LOG_ERROR(gLogger) << "model load status:" << status << std::endl;
 	}
 }
