@@ -1,6 +1,8 @@
 #include <CaffeModel.h>
 #include <gtest/gtest.h>
 #include <chrono>
+#include "NvInferPlugin.h"
+
 using namespace std::chrono;
 
 dtrCommon::CaffeNNParams initializeNNParams() {
@@ -9,6 +11,10 @@ dtrCommon::CaffeNNParams initializeNNParams() {
 	params.prototxtFileName = "googlenet.prototxt";
 	params.weightsFileName = "googlenet.caffemodel";
 	params.gieFileName = "googlenet_gie.bin";
+	// params.dataDirs.push_back("data/yolo/");
+	// params.prototxtFileName = "yolo.prototxt";
+	// params.weightsFileName = "yolo.caffemodel";
+	// params.gieFileName = "googlenet_gie.bin";
 	params.inputTensorNames.push_back("data");
 	params.batchSize = 4;
 	params.maxBatchSize = 256;

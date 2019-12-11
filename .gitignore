@@ -6,3 +6,4 @@ data/*/*/*/*/*.caffemodel
 data/*/*.tgz
 data/*/*.tar.gz
 data/mnist
+install
