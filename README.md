@@ -250,6 +250,8 @@ infer time: 2.80 ms
 
 ### TensorRT 中已经实现的Plugin
 
+[TensorRT Plugin使用方式简介-以leaky relu层为例](https://github.com/LitLeo/TensorRT_Tutorial/blob/master/blogs/TensorRT%20Plugin%E4%BD%BF%E7%94%A8%E6%96%B9%E5%BC%8F%E7%AE%80%E4%BB%8B-%E4%BB%A5leaky%20relu%E5%B1%82%E4%B8%BA%E4%BE%8B.md)
+
 ```cpp
 extern "C" {
 //!
